@@ -63,10 +63,8 @@ margin-top:40px;
 border-radius:12px;
 }
 
-/* BIG AMBULANCE */
-
 .ambulanceIcon{
-font-size:60px;
+font-size:65px;
 }
 
 </style>
@@ -79,12 +77,12 @@ font-size:60px;
 <p>Voice Activated • AI Injury Detection • Smart Rescue</p>
 
 <button class="voice" onclick="startVoice()">🎤 Start Voice Assistant</button>
-<button class="scan" onclick="startScan()">📷 Scan Injury</button>
+<button class="scan" onclick="predict()">📷 Scan Injury</button>
 <button class="rescue" onclick="dispatchRescue()">🚑 Send Ambulance</button>
 
 <br>
 
-<video id="camera" width="320" height="240" autoplay></video>
+<video id="camera" width="320" height="240" autoplay playsinline></video>
 
 <div id="heard">Voice: Off</div>
 <div id="result"></div>
@@ -95,7 +93,7 @@ font-size:60px;
 
 <script>
 
-/* SPEAK */
+/* TEXT TO SPEECH */
 
 function speak(text){
 const speech=new SpeechSynthesisUtterance(text);
@@ -118,25 +116,35 @@ model = await tmImage.load(modelURL, metadataURL);
 
 loadModel();
 
-/* CAMERA */
+/* START CAMERA ONCE */
 
-async function startScan(){
+let video=document.getElementById("camera");
 
-const video=document.getElementById("camera");
+async function initCamera(){
+
+try{
 
 const stream=await navigator.mediaDevices.getUserMedia({video:true});
-
 video.srcObject=stream;
 
-setTimeout(predict,2000);
+}catch(e){
+
+alert("Camera permission required");
 
 }
+
+}
+
+initCamera();
 
 /* AI PREDICTION */
 
 async function predict(){
 
-const video=document.getElementById("camera");
+if(!model){
+alert("Model still loading");
+return;
+}
 
 const prediction=await model.predict(video);
 
@@ -149,7 +157,7 @@ best=prediction[i];
 }
 
 document.getElementById("result").innerHTML =
-best.className + " (" + (best.probability*100).toFixed(1) + "%)";
+best.className+" ("+(best.probability*100).toFixed(1)+"%)";
 
 speak(best.className+" detected");
 
@@ -175,24 +183,34 @@ document.getElementById("heard").innerHTML="Listening...";
 
 recognition.onresult=function(event){
 
-let speech=event.results[event.results.length-1][0].transcript;
-
-speech=speech.toLowerCase().trim();
+let speech=event.results[event.results.length-1][0].transcript
+.toLowerCase()
+.trim();
 
 document.getElementById("heard").innerHTML="Heard: "+speech;
 
 /* SCAN COMMAND */
 
 if(speech.includes("scan")){
+
 speak("Starting scan");
-startScan();
+
+predict();
+
 }
 
 /* HELP COMMAND */
 
-if(speech.includes("help") || speech.includes("ambulance") || speech.includes("emergency")){
+if(
+speech.includes("help") ||
+speech.includes("ambulance") ||
+speech.includes("emergency")
+){
+
 speak("Sending ambulance");
+
 dispatchRescue();
+
 }
 
 };
@@ -209,8 +227,6 @@ let map;
 let userMarker;
 let ambulanceMarker;
 let routeLine;
-
-/* BIG AMBULANCE ICON */
 
 const ambulanceIcon=L.divIcon({
 html:'<div class="ambulanceIcon">🚑</div>',
@@ -256,13 +272,9 @@ const coords=data.routes[0].geometry.coordinates;
 
 const route=coords.map(c=>[c[1],c[0]]);
 
-/* draw route */
-
 if(routeLine) map.removeLayer(routeLine);
 
 routeLine=L.polyline(route,{color:"red",weight:5}).addTo(map);
-
-/* ambulance */
 
 ambulanceMarker=L.marker(route[0],{icon:ambulanceIcon}).addTo(map);
 
