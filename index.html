@@ -8,10 +8,9 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.6.0"></script>
-<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.4/dist/teachablemachine-image.min.js"></script>
 
 <style>
-
 body{
 font-family:Arial;
 background:#0f172a;
@@ -71,7 +70,6 @@ border-radius:12px;
 .ambulanceIcon{
 font-size:70px;
 }
-
 </style>
 </head>
 
@@ -95,249 +93,181 @@ font-size:70px;
 <div id="result"></div>
 
 <h2>Emergency Map</h2>
-
 <div id="map"></div>
 
 <script>
-
 /* SPEAK */
-
 function speak(text){
-const speech=new SpeechSynthesisUtterance(text);
-speechSynthesis.speak(speech);
+    const speech = new SpeechSynthesisUtterance(text);
+    speechSynthesis.speak(speech);
 }
 
 /* MODEL */
-
 let model;
-let modelReady=false;
-
+let modelReady = false;
 const MODEL_URL = "https://teachablemachine.withgoogle.com/models/0WBW0685Z/";
 
 async function loadModel(){
+    document.getElementById("status").innerText = "Loading AI model...";
+    try{
+        const modelURL = MODEL_URL + "model.json";
+        const metadataURL = MODEL_URL + "metadata.json";
 
-document.getElementById("status").innerText="Loading AI model...";
+        console.log("Loading model from:", modelURL);
+        model = await tmImage.load(modelURL, metadataURL);
 
-try{
-
-const modelURL = MODEL_URL + "model.json";
-const metadataURL = MODEL_URL + "metadata.json";
-
-console.log("Loading model from:", modelURL);
-
-model = await tmImage.load(modelURL, metadataURL);
-
-modelReady=true;
-
-document.getElementById("status").innerText="AI Ready";
-
-console.log("Model loaded successfully");
-
-}catch(error){
-
-console.error("Model load error:", error);
-
-document.getElementById("status").innerText="Model failed to load";
-
-alert("Model failed to load. Check console (F12).");
-
+        modelReady = true;
+        document.getElementById("status").innerText = "AI Ready";
+        console.log("Model loaded successfully");
+    } catch(error){
+        console.error("Model load error:", error);
+        document.getElementById("status").innerText = "Model failed to load";
+        alert("Model failed to load. Check console (F12).");
+    }
 }
-
-}
-
 loadModel();
 
 /* CAMERA */
-
-let video=document.getElementById("camera");
+let video = document.getElementById("camera");
 
 async function startScan(){
+    if(!modelReady){
+        alert("AI model still loading, please wait");
+        return;
+    }
 
-if(!modelReady){
+    try{
+        // Stop previous video stream if any
+        if(video.srcObject){
+            video.srcObject.getTracks().forEach(track => track.stop());
+        }
 
-alert("AI model still loading");
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
 
-return;
-
-}
-
-try{
-
-const stream = await navigator.mediaDevices.getUserMedia({video:true});
-
-video.srcObject = stream;
-
-video.onloadeddata = function(){
-
-setTimeout(predict,1500);
-
-};
-
-}catch(err){
-
-alert("Please allow camera access");
-
-}
-
+        video.onloadeddata = function(){
+            setTimeout(predict, 1500);
+        };
+    } catch(err){
+        console.error(err);
+        alert("Please allow camera access or use HTTPS");
+    }
 }
 
 /* AI PREDICTION */
-
 async function predict(){
+    if(!modelReady) return;
 
-const prediction=await model.predict(video);
+    const prediction = await model.predict(video);
+    let best = prediction[0];
+    for(let i=1; i<prediction.length; i++){
+        if(prediction[i].probability > best.probability){
+            best = prediction[i];
+        }
+    }
 
-let best=prediction[0];
-
-for(let i=1;i<prediction.length;i++){
-if(prediction[i].probability>best.probability){
-best=prediction[i];
-}
-}
-
-document.getElementById("result").innerHTML =
-best.className+" ("+(best.probability*100).toFixed(1)+"%)";
-
-speak(best.className+" detected");
-
+    document.getElementById("result").innerHTML =
+        best.className + " (" + (best.probability*100).toFixed(1) + "%)";
+    speak(best.className + " detected");
 }
 
 /* VOICE */
-
 let recognition;
-
 async function startVoice(){
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio:true });
+        stream.getTracks().forEach(track => track.stop()); // stop immediately, just for permission
 
-const stream = await navigator.mediaDevices.getUserMedia({audio:true});
-stream.getTracks().forEach(track => track.stop());
+        recognition = new webkitSpeechRecognition();
+        recognition.continuous = true;
+        recognition.lang = "en-US";
+        recognition.start();
+        document.getElementById("heard").innerHTML = "Listening...";
 
-recognition=new webkitSpeechRecognition();
+        recognition.onresult = function(event){
+            let speech = event.results[event.results.length-1][0].transcript
+                .toLowerCase().trim();
+            document.getElementById("heard").innerHTML = "Heard: " + speech;
 
-recognition.continuous=true;
-recognition.lang="en-US";
+            if(speech.includes("scan")){
+                speak("Starting scan");
+                startScan();
+            }
 
-recognition.start();
+            if(speech.includes("help") || speech.includes("ambulance") || speech.includes("emergency")){
+                speak("Sending ambulance");
+                dispatchRescue();
+            }
+        };
 
-document.getElementById("heard").innerHTML="Listening...";
+        recognition.onend = function(){ recognition.start(); };
 
-recognition.onresult=function(event){
-
-let speech=event.results[event.results.length-1][0].transcript
-.toLowerCase().trim();
-
-document.getElementById("heard").innerHTML="Heard: "+speech;
-
-if(speech.includes("scan")){
-
-speak("Starting scan");
-
-startScan();
-
-}
-
-if(
-speech.includes("help") ||
-speech.includes("ambulance") ||
-speech.includes("emergency")
-){
-
-speak("Sending ambulance");
-
-dispatchRescue();
-
-}
-
-};
-
-recognition.onend=function(){
-recognition.start();
-};
-
+    } catch(err){
+        console.error(err);
+        alert("Microphone access denied or unavailable");
+    }
 }
 
 /* MAP */
-
 let map;
 let userMarker;
 let ambulanceMarker;
 let routeLine;
 
-const ambulanceIcon=L.divIcon({
-html:'<div class="ambulanceIcon">🚑</div>',
-iconSize:[60,60],
-className:''
+const ambulanceIcon = L.divIcon({
+    html:'<div class="ambulanceIcon">🚑</div>',
+    iconSize:[60,60],
+    className:''
 });
 
 navigator.geolocation.getCurrentPosition(function(pos){
+    const lat = pos.coords.latitude;
+    const lon = pos.coords.longitude;
 
-const lat=pos.coords.latitude;
-const lon=pos.coords.longitude;
+    map = L.map('map').setView([lat,lon],15);
 
-map=L.map('map').setView([lat,lon],15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+        maxZoom:19
+    }).addTo(map);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-maxZoom:19
-}).addTo(map);
-
-userMarker=L.marker([lat,lon]).addTo(map)
-.bindPopup("Patient Location")
-.openPopup();
-
+    userMarker = L.marker([lat,lon]).addTo(map)
+        .bindPopup("Patient Location")
+        .openPopup();
 });
 
 /* DISPATCH */
-
 async function dispatchRescue(){
+    if(!userMarker) return;
 
-if(!userMarker) return;
+    const user = userMarker.getLatLng();
+    const startLat = user.lat + 0.02;
+    const startLng = user.lng - 0.02;
 
-const user=userMarker.getLatLng();
+    const url = `https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${user.lng},${user.lat}?overview=full&geometries=geojson`;
+    const res = await fetch(url);
+    const data = await res.json();
 
-const startLat=user.lat+0.02;
-const startLng=user.lng-0.02;
+    const coords = data.routes[0].geometry.coordinates;
+    const route = coords.map(c => [c[1], c[0]]);
 
-const url=
-`https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${user.lng},${user.lat}?overview=full&geometries=geojson`;
+    if(routeLine) map.removeLayer(routeLine);
+    routeLine = L.polyline(route, {color:"red",weight:5}).addTo(map);
 
-const res=await fetch(url);
-const data=await res.json();
-
-const coords=data.routes[0].geometry.coordinates;
-
-const route=coords.map(c=>[c[1],c[0]]);
-
-if(routeLine) map.removeLayer(routeLine);
-
-routeLine=L.polyline(route,{color:"red",weight:5}).addTo(map);
-
-ambulanceMarker=L.marker(route[0],{icon:ambulanceIcon}).addTo(map);
-
-moveAmbulance(route);
-
+    ambulanceMarker = L.marker(route[0], {icon:ambulanceIcon}).addTo(map);
+    moveAmbulance(route);
 }
 
 function moveAmbulance(route){
-
-let i=0;
-
-const interval=setInterval(()=>{
-
-ambulanceMarker.setLatLng(route[i]);
-
-i++;
-
-if(i>=route.length){
-
-clearInterval(interval);
-
-speak("Ambulance has arrived");
-
+    let i = 0;
+    const interval = setInterval(()=>{
+        ambulanceMarker.setLatLng(route[i]);
+        i++;
+        if(i >= route.length){
+            clearInterval(interval);
+            speak("Ambulance has arrived");
+        }
+    },120);
 }
-
-},120);
-
-}
-
 </script>
 
 </body>
