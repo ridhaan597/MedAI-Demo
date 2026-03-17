@@ -63,6 +63,12 @@ margin-top:40px;
 border-radius:12px;
 }
 
+/* BIG AMBULANCE */
+
+.ambulanceIcon{
+font-size:60px;
+}
+
 </style>
 </head>
 
@@ -89,17 +95,16 @@ border-radius:12px;
 
 <script>
 
-/* TEXT TO SPEECH */
+/* SPEAK */
 
 function speak(text){
 const speech=new SpeechSynthesisUtterance(text);
 speechSynthesis.speak(speech);
 }
 
-/* LOAD YOUR MODEL */
+/* LOAD MODEL */
 
 let model;
-
 const MODEL_URL="https://teachablemachine.withgoogle.com/models/0WBW0685Z/";
 
 async function loadModel(){
@@ -146,11 +151,11 @@ best=prediction[i];
 document.getElementById("result").innerHTML =
 best.className + " (" + (best.probability*100).toFixed(1) + "%)";
 
-speak(best.className + " detected");
+speak(best.className+" detected");
 
 }
 
-/* VOICE COMMANDS */
+/* VOICE SYSTEM */
 
 let recognition;
 
@@ -170,15 +175,23 @@ document.getElementById("heard").innerHTML="Listening...";
 
 recognition.onresult=function(event){
 
-let speech=event.results[event.results.length-1][0].transcript.toLowerCase();
+let speech=event.results[event.results.length-1][0].transcript;
+
+speech=speech.toLowerCase().trim();
 
 document.getElementById("heard").innerHTML="Heard: "+speech;
 
+/* SCAN COMMAND */
+
 if(speech.includes("scan")){
+speak("Starting scan");
 startScan();
 }
 
-if(speech.includes("help") || speech.includes("ambulance")){
+/* HELP COMMAND */
+
+if(speech.includes("help") || speech.includes("ambulance") || speech.includes("emergency")){
+speak("Sending ambulance");
 dispatchRescue();
 }
 
@@ -200,9 +213,9 @@ let routeLine;
 /* BIG AMBULANCE ICON */
 
 const ambulanceIcon=L.divIcon({
-html:"🚑",
-className:"",
-iconSize:[100,100]
+html:'<div class="ambulanceIcon">🚑</div>',
+iconSize:[60,60],
+className:''
 });
 
 navigator.geolocation.getCurrentPosition(function(pos){
@@ -222,7 +235,7 @@ userMarker=L.marker([lat,lon]).addTo(map)
 
 });
 
-/* ROUTING */
+/* DISPATCH */
 
 async function dispatchRescue(){
 
@@ -230,30 +243,28 @@ if(!userMarker) return;
 
 const user=userMarker.getLatLng();
 
-/* ambulance start location */
-
 const startLat=user.lat+0.02;
 const startLng=user.lng-0.02;
 
-const routeURL =
+const url=
 `https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${user.lng},${user.lat}?overview=full&geometries=geojson`;
 
-const response=await fetch(routeURL);
-const data=await response.json();
+const res=await fetch(url);
+const data=await res.json();
 
 const coords=data.routes[0].geometry.coordinates;
 
 const route=coords.map(c=>[c[1],c[0]]);
 
-/* draw road route */
+/* draw route */
 
-routeLine=L.polyline(route,{color:"red"}).addTo(map);
+if(routeLine) map.removeLayer(routeLine);
 
-/* ambulance marker */
+routeLine=L.polyline(route,{color:"red",weight:5}).addTo(map);
+
+/* ambulance */
 
 ambulanceMarker=L.marker(route[0],{icon:ambulanceIcon}).addTo(map);
-
-/* move ambulance */
 
 moveAmbulance(route);
 
@@ -277,7 +288,7 @@ speak("Ambulance has arrived");
 
 }
 
-},200);
+},120);
 
 }
 
