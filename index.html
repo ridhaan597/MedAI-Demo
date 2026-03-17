@@ -7,6 +7,9 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.6.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8"></script>
+
 <style>
 
 body{
@@ -49,12 +52,12 @@ color:#38bdf8;
 
 #result{
 margin-top:10px;
-font-size:20px;
+font-size:22px;
 }
 
 #map{
 width:90%;
-height:420px;
+height:450px;
 margin:auto;
 margin-top:40px;
 border-radius:12px;
@@ -67,7 +70,7 @@ border-radius:12px;
 
 <header>MedAI Emergency Assistant</header>
 
-<p>Voice Activated • Injury Detection • Smart Rescue</p>
+<p>Voice Activated • AI Injury Detection • Smart Rescue</p>
 
 <button class="voice" onclick="startVoice()">🎤 Start Voice Assistant</button>
 <button class="scan" onclick="startScan()">📷 Scan Injury</button>
@@ -86,18 +89,33 @@ border-radius:12px;
 
 <script>
 
-/* SPEAK */
+/* TEXT TO SPEECH */
 
 function speak(text){
 const speech=new SpeechSynthesisUtterance(text);
 speechSynthesis.speak(speech);
 }
 
+/* LOAD YOUR MODEL */
+
+let model;
+
+const MODEL_URL="https://teachablemachine.withgoogle.com/models/0WBW0685Z/";
+
+async function loadModel(){
+
+const modelURL = MODEL_URL + "model.json";
+const metadataURL = MODEL_URL + "metadata.json";
+
+model = await tmImage.load(modelURL, metadataURL);
+
+}
+
+loadModel();
+
 /* CAMERA */
 
 async function startScan(){
-
-try{
 
 const video=document.getElementById("camera");
 
@@ -105,57 +123,45 @@ const stream=await navigator.mediaDevices.getUserMedia({video:true});
 
 video.srcObject=stream;
 
-setTimeout(fakeAI,2000);
-
-}catch(e){
-
-alert("Camera permission needed");
+setTimeout(predict,2000);
 
 }
 
+/* AI PREDICTION */
+
+async function predict(){
+
+const video=document.getElementById("camera");
+
+const prediction=await model.predict(video);
+
+let best=prediction[0];
+
+for(let i=1;i<prediction.length;i++){
+if(prediction[i].probability>best.probability){
+best=prediction[i];
+}
 }
 
-/* DEMO AI */
+document.getElementById("result").innerHTML =
+best.className + " (" + (best.probability*100).toFixed(1) + "%)";
 
-function fakeAI(){
-
-const injuries=["Minor Cut","Bruise","Burn","No Injury"];
-
-const result=injuries[Math.floor(Math.random()*injuries.length)];
-
-document.getElementById("result").innerHTML="Detected: "+result;
-
-speak(result+" detected");
+speak(best.className + " detected");
 
 }
 
-/* VOICE SYSTEM */
+/* VOICE COMMANDS */
 
 let recognition;
 
 async function startVoice(){
 
-try{
-
 const stream = await navigator.mediaDevices.getUserMedia({audio:true});
 stream.getTracks().forEach(track => track.stop());
-
-}catch(e){
-
-alert("Microphone permission required");
-return;
-
-}
-
-if(!('webkitSpeechRecognition' in window)){
-alert("Use Google Chrome");
-return;
-}
 
 recognition=new webkitSpeechRecognition();
 
 recognition.continuous=true;
-recognition.interimResults=false;
 recognition.lang="en-US";
 
 recognition.start();
@@ -168,46 +174,19 @@ let speech=event.results[event.results.length-1][0].transcript.toLowerCase();
 
 document.getElementById("heard").innerHTML="Heard: "+speech;
 
-/* SCAN COMMAND */
-
-if(
-speech.includes("scan") ||
-speech.includes("scan injury") ||
-speech.includes("check injury")
-){
-
-speak("Starting injury scan");
-
+if(speech.includes("scan")){
 startScan();
-
 }
 
-/* HELP COMMAND */
-
-if(
-speech.includes("help") ||
-speech.includes("ambulance") ||
-speech.includes("send ambulance") ||
-speech.includes("emergency")
-){
-
-speak("Dispatching ambulance");
-
+if(speech.includes("help") || speech.includes("ambulance")){
 dispatchRescue();
-
 }
 
-};
-
-recognition.onerror=function(event){
-document.getElementById("heard").innerHTML="Voice error: "+event.error;
 };
 
 recognition.onend=function(){
 recognition.start();
 };
-
-speak("Voice assistant activated");
 
 }
 
@@ -216,11 +195,14 @@ speak("Voice assistant activated");
 let map;
 let userMarker;
 let ambulanceMarker;
+let routeLine;
+
+/* BIG AMBULANCE ICON */
 
 const ambulanceIcon=L.divIcon({
 html:"🚑",
 className:"",
-iconSize:[40,40]
+iconSize:[100,100]
 });
 
 navigator.geolocation.getCurrentPosition(function(pos){
@@ -240,35 +222,54 @@ userMarker=L.marker([lat,lon]).addTo(map)
 
 });
 
-/* AMBULANCE */
+/* ROUTING */
 
-function dispatchRescue(){
+async function dispatchRescue(){
 
 if(!userMarker) return;
 
 const user=userMarker.getLatLng();
 
-const start=[user.lat+0.01,user.lng-0.01];
+/* ambulance start location */
 
-ambulanceMarker=L.marker(start,{icon:ambulanceIcon}).addTo(map);
+const startLat=user.lat+0.02;
+const startLng=user.lng-0.02;
 
-moveAmbulance(start,user);
+const routeURL =
+`https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${user.lng},${user.lat}?overview=full&geometries=geojson`;
+
+const response=await fetch(routeURL);
+const data=await response.json();
+
+const coords=data.routes[0].geometry.coordinates;
+
+const route=coords.map(c=>[c[1],c[0]]);
+
+/* draw road route */
+
+routeLine=L.polyline(route,{color:"red"}).addTo(map);
+
+/* ambulance marker */
+
+ambulanceMarker=L.marker(route[0],{icon:ambulanceIcon}).addTo(map);
+
+/* move ambulance */
+
+moveAmbulance(route);
 
 }
 
-function moveAmbulance(start,end){
+function moveAmbulance(route){
 
-let lat=start[0];
-let lng=start[1];
+let i=0;
 
 const interval=setInterval(()=>{
 
-lat+=(end.lat-lat)*0.1;
-lng+=(end.lng-lng)*0.1;
+ambulanceMarker.setLatLng(route[i]);
 
-ambulanceMarker.setLatLng([lat,lng]);
+i++;
 
-if(Math.abs(lat-end.lat)<0.0001){
+if(i>=route.length){
 
 clearInterval(interval);
 
@@ -276,7 +277,7 @@ speak("Ambulance has arrived");
 
 }
 
-},500);
+},200);
 
 }
 
