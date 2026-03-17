@@ -1,69 +1,96 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>MedAI Emergency Demo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedAI Demo</title>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<!-- TensorFlow + Teachable Machine -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8"></script>
 
 <style>
-
 body{
-font-family: Arial;
-background:#0f172a;
-color:white;
-margin:0;
-display:flex;
-justify-content:center;
-align-items:center;
-height:100vh;
+    font-family: Arial, sans-serif;
+    margin:0;
+    background:#0f172a;
+    color:white;
+    text-align:center;
 }
 
-.phone{
-width:360px;
-height:700px;
-background:#020617;
-border-radius:30px;
-padding:20px;
-box-shadow:0 0 30px black;
-overflow:auto;
-}
-
-h1{
-text-align:center;
-color:#22c55e;
+header{
+    font-size:42px;
+    padding:35px;
+    font-weight:bold;
 }
 
 button{
-width:100%;
-padding:15px;
-margin-top:10px;
-border:none;
-border-radius:10px;
-font-size:16px;
-cursor:pointer;
+    padding:12px 22px;
+    margin:10px;
+    border:none;
+    border-radius:20px;
+    cursor:pointer;
+    font-size:16px;
 }
 
-.scan{background:#22c55e;color:white;}
-.voice{background:#38bdf8;color:white;}
+.voice{background:#22c55e;color:white;}
+.scan{background:#3b82f6;color:white;}
 .rescue{background:#ef4444;color:white;}
 
 video{
-width:100%;
-border-radius:10px;
-margin-top:10px;
+    width:320px;
+    border-radius:15px;
+    margin-top:20px;
 }
 
-#map{
-height:250px;
-margin-top:10px;
-border-radius:10px;
+#scanResult{
+    margin-top:20px;
+    width:300px;
+    margin-left:auto;
+    margin-right:auto;
 }
 
-.status{
-margin-top:10px;
-text-align:center;
-color:#94a3b8;
+/* MAP */
+
+.map{
+    width:750px;
+    height:420px;
+    margin:auto;
+    margin-top:40px;
+    border-radius:20px;
+    background:url("https://upload.wikimedia.org/wikipedia/commons/8/80/World_map_-_low_resolution.svg");
+    background-size:cover;
+    position:relative;
+    overflow:hidden;
+}
+
+#user{
+    position:absolute;
+    top:65%;
+    left:60%;
+    font-size:26px;
+}
+
+#ambulance{
+    position:absolute;
+    top:10%;
+    left:10%;
+    font-size:26px;
+}
+
+/* NETWORK PHONES */
+
+.phone{
+    position:absolute;
+    font-size:18px;
+    opacity:0.9;
+}
+
+.connection{
+    position:absolute;
+    height:2px;
+    background:#38bdf8;
+    transform-origin:left center;
 }
 
 </style>
@@ -71,156 +98,230 @@ color:#94a3b8;
 
 <body>
 
-<div class="phone">
+<header>MedAI AI Emergency Assistant</header>
 
-<h1>MedAI</h1>
+<p>Voice Activated • AI Injury Detection • Smart Rescue System</p>
 
-<p style="text-align:center">AI Emergency Assistant</p>
+<button class="voice" onclick="startWakeWord()">🎤 Start Voice</button>
+<button class="scan" onclick="initCamera()">Open Scanner</button>
+<button class="scan" onclick="predict()">Run AI Scan</button>
 
-<button class="scan" onclick="startScan()">AI Injury Scan</button>
+<div>
+<video id="webcam" autoplay playsinline></video>
+<div id="scanResult"></div>
+</div>
 
-<video id="camera" autoplay></video>
+<h2>Emergency Response Map</h2>
 
-<button class="voice" onclick="startVoice()">Activate Voice Help</button>
+<button class="rescue" onclick="dispatchRescue()">🚑 Dispatch Rescue Team</button>
 
-<button class="rescue" onclick="callRescue()">Emergency Rescue</button>
+<div class="map" id="map">
 
-<div id="map"></div>
+<div id="user">📍</div>
+<div id="ambulance">🚑</div>
 
-<div class="status" id="status">Status: Waiting</div>
+<!-- network phones -->
+<div class="phone" style="top:30%;left:20%">📱</div>
+<div class="phone" style="top:50%;left:40%">📱</div>
+<div class="phone" style="top:25%;left:70%">📱</div>
+<div class="phone" style="top:70%;left:25%">📱</div>
 
 </div>
 
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-
 <script>
 
-let userLat
-let userLng
-let rescueMarker
+let model, webcam;
 
-// CAMERA
+/* LOAD MODEL */
 
-async function startScan(){
+const URL="https://teachablemachine.withgoogle.com/models/L3S9i1V7D/";
 
-document.getElementById("status").innerText="Scanning with AI..."
+async function loadModel(){
+    const modelURL = URL + "model.json";
+    const metadataURL = URL + "metadata.json";
+    model = await tmImage.load(modelURL, metadataURL);
+}
 
-let stream=await navigator.mediaDevices.getUserMedia({video:true})
+loadModel();
 
-document.getElementById("camera").srcObject=stream
+/* CAMERA */
 
-setTimeout(()=>{
+async function initCamera(){
 
-let injuries=["Minor Cut Detected","Possible Fracture","Bruising Detected","No Injury Found"]
+webcam = new tmImage.Webcam(320,320,true);
 
-let result=injuries[Math.floor(Math.random()*injuries.length)]
+await webcam.setup();
+await webcam.play();
 
-document.getElementById("status").innerText="AI Result: "+result
+document.getElementById("webcam").replaceWith(webcam.canvas);
 
-},3000)
+window.requestAnimationFrame(loop);
 
 }
 
-// VOICE ACTIVATION
+async function loop(){
+webcam.update();
+requestAnimationFrame(loop);
+}
 
-function startVoice(){
+/* AI PREDICTION */
 
-let SpeechRecognition=window.SpeechRecognition || window.webkitSpeechRecognition
+async function predict(){
 
-let recognition=new SpeechRecognition()
+if(!model || !webcam) return;
 
-recognition.continuous=true
-recognition.lang="en-US"
+const prediction = await model.predict(webcam.canvas);
 
-recognition.onresult=function(event){
+let html="";
 
-let speech=event.results[event.results.length-1][0].transcript.toLowerCase()
+prediction.forEach(p => {
 
-if(speech.includes("help") || speech.includes("medai")){
+let percent=(p.probability*100).toFixed(1);
 
-callRescue()
+html+=`
+<div style="margin:8px 0;text-align:left">
+<b>${p.className}</b>
+<div style="background:#1e293b;border-radius:10px;height:14px;">
+<div style="width:${percent}%;background:#38bdf8;height:14px;border-radius:10px"></div>
+</div>
+${percent}%
+</div>
+`;
+
+});
+
+document.getElementById("scanResult").innerHTML=html;
+
+}
+
+/* WAKE WORD */
+
+function startWakeWord(){
+
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+if(!SpeechRecognition){
+alert("Voice recognition not supported in this browser");
+return;
+}
+
+const recognition = new SpeechRecognition();
+recognition.continuous = true;
+recognition.lang = "en-US";
+
+recognition.start();
+
+recognition.onresult = function(event){
+
+let speech = event.results[event.results.length-1][0].transcript.toLowerCase();
+
+if(speech.includes("med ai scan") || speech.includes("medai scan")){
+
+initCamera();
+
+setTimeout(()=>predict(),2000);
 
 }
 
 }
 
-recognition.start()
-
-document.getElementById("status").innerText="Voice listening..."
+alert("Listening for wake word: 'MedAI scan'");
 
 }
 
-// MAP
+/* RESCUE SYSTEM */
 
-let map=L.map('map').setView([20,0],2)
+function dispatchRescue(){
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-maxZoom:19
-}).addTo(map)
+alert("Emergency detected. Dispatching ambulance.");
 
-navigator.geolocation.getCurrentPosition(position=>{
+moveAmbulance();
 
-userLat=position.coords.latitude
-userLng=position.coords.longitude
+}
 
-map.setView([userLat,userLng],13)
+function moveAmbulance(){
 
-L.marker([userLat,userLng]).addTo(map).bindPopup("Your Location")
+let amb=document.getElementById("ambulance");
 
-})
-
-// RESCUE TEAM
-
-function callRescue(){
-
-document.getElementById("status").innerText="Rescue team dispatched..."
-
-let startLat=userLat+0.05
-let startLng=userLng+0.05
-
-rescueMarker=L.marker([startLat,startLng]).addTo(map).bindPopup("Rescue Team")
-
-let step=0
+let x=10;
+let y=10;
 
 let interval=setInterval(()=>{
 
-startLat-=0.002
-startLng-=0.002
+x+=1.5;
+y+=1.2;
 
-rescueMarker.setLatLng([startLat,startLng])
+amb.style.left=x+"%";
+amb.style.top=y+"%";
 
-step++
+if(x>=60){
 
-if(step>25){
+clearInterval(interval);
 
-clearInterval(interval)
-
-document.getElementById("status").innerText="Rescue team has arrived"
-
-}
-
-},500)
+alert("🚑 Ambulance has reached the patient");
 
 }
 
-// INACTIVITY DETECTION
-
-let inactiveTime=0
-
-setInterval(()=>{
-
-inactiveTime++
-
-if(inactiveTime>30){
-
-callRescue()
+},200);
 
 }
 
-},1000)
+/* INACTIVITY CHECK */
 
-document.onmousemove=()=>inactiveTime=0
-document.onkeypress=()=>inactiveTime=0
+let timer;
+
+function resetTimer(){
+
+clearTimeout(timer);
+
+timer=setTimeout(()=>{
+
+if(confirm("No activity detected. Need emergency help?")){
+
+dispatchRescue();
+
+}
+
+},60000);
+
+}
+
+document.onmousemove=resetTimer;
+document.onkeypress=resetTimer;
+
+resetTimer();
+
+/* NETWORK CONNECTION ANIMATION */
+
+const phones=document.querySelectorAll(".phone");
+const user=document.getElementById("user");
+const map=document.getElementById("map");
+
+phones.forEach(phone=>{
+
+let line=document.createElement("div");
+line.className="connection";
+
+let px=phone.offsetLeft;
+let py=phone.offsetTop;
+
+let ux=user.offsetLeft;
+let uy=user.offsetTop;
+
+let dx=ux-px;
+let dy=uy-py;
+
+let length=Math.sqrt(dx*dx+dy*dy);
+let angle=Math.atan2(dy,dx)*180/Math.PI;
+
+line.style.width=length+"px";
+line.style.left=px+"px";
+line.style.top=py+"px";
+line.style.transform=`rotate(${angle}deg)`;
+
+map.appendChild(line);
+
+});
 
 </script>
 
