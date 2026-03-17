@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>MedAI Demo</title>
+<title>MedAI Emergency Demo</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -41,14 +41,14 @@ margin-top:20px;
 border-radius:12px;
 }
 
-#result{
-margin-top:15px;
-font-size:20px;
-}
-
 #heard{
 margin-top:10px;
 color:#38bdf8;
+}
+
+#result{
+margin-top:10px;
+font-size:20px;
 }
 
 #map{
@@ -76,8 +76,8 @@ border-radius:12px;
 
 <video id="camera" width="320" height="240" autoplay></video>
 
-<div id="result"></div>
 <div id="heard"></div>
+<div id="result"></div>
 
 <h2>Emergency Map</h2>
 
@@ -85,7 +85,7 @@ border-radius:12px;
 
 <script>
 
-/* SPEECH RESPONSE */
+/* SPEAK */
 
 function speak(text){
 const speech=new SpeechSynthesisUtterance(text);
@@ -106,7 +106,7 @@ setTimeout(fakeAI,2000);
 
 }
 
-/* SIMULATED AI */
+/* DEMO AI */
 
 function fakeAI(){
 
@@ -124,12 +124,13 @@ speak("Scan complete. "+result+" detected.");
 
 let recognition;
 
-function startVoice(){
+async function startVoice(){
 
-if(!('webkitSpeechRecognition' in window)){
-alert("Use Google Chrome for voice commands");
-return;
-}
+/* force mic permission */
+
+await navigator.mediaDevices.getUserMedia({audio:true});
+
+/* start speech recognition */
 
 recognition=new webkitSpeechRecognition();
 
@@ -163,10 +164,6 @@ dispatchRescue();
 
 };
 
-recognition.onerror=function(e){
-console.log(e);
-};
-
 recognition.onend=function(){
 recognition.start();
 };
@@ -181,12 +178,12 @@ let map;
 let userMarker;
 let ambulanceMarker;
 
-/* REAL AMBULANCE ICON */
+/* GUARANTEED AMBULANCE ICON */
 
-const ambulanceIcon=L.icon({
-iconUrl:"https://upload.wikimedia.org/wikipedia/commons/6/6b/Ambulance_icon.png",
-iconSize:[50,50],
-iconAnchor:[25,25]
+const ambulanceIcon=L.divIcon({
+html:"🚑",
+className:"",
+iconSize:[40,40]
 });
 
 navigator.geolocation.getCurrentPosition(function(pos){
@@ -216,8 +213,7 @@ const user=userMarker.getLatLng();
 
 const start=[user.lat+0.01,user.lng-0.01];
 
-ambulanceMarker=L.marker(start,{icon:ambulanceIcon}).addTo(map)
-.bindPopup("Ambulance");
+ambulanceMarker=L.marker(start,{icon:ambulanceIcon}).addTo(map);
 
 moveAmbulance(start,user);
 
