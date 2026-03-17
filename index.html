@@ -1,14 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
+<meta charset="UTF-8">
+<title>MedAI Demo</title>
 
-<title>MedAI Emergency AI</title>
-
-<meta name="viewport" content="width=device-width, initial-scale=1">
-
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <style>
 
@@ -21,16 +18,16 @@ margin:0;
 }
 
 header{
-font-size:34px;
+font-size:32px;
 padding:25px;
 font-weight:bold;
 }
 
 button{
-padding:14px 22px;
+padding:12px 20px;
 margin:10px;
 border:none;
-border-radius:25px;
+border-radius:20px;
 font-size:16px;
 cursor:pointer;
 }
@@ -46,8 +43,8 @@ border-radius:12px;
 
 #heard{
 margin-top:15px;
-color:#38bdf8;
 font-size:18px;
+color:#38bdf8;
 }
 
 #result{
@@ -64,14 +61,13 @@ border-radius:12px;
 }
 
 </style>
-
 </head>
 
 <body>
 
 <header>MedAI Emergency Assistant</header>
 
-<p>AI Injury Detection • Voice Activated Rescue</p>
+<p>Voice Activated • Injury Detection • Smart Rescue</p>
 
 <button class="voice" onclick="startVoice()">🎤 Start Voice Assistant</button>
 <button class="scan" onclick="startScan()">📷 Scan Injury</button>
@@ -79,10 +75,9 @@ border-radius:12px;
 
 <br>
 
-<video id="camera" width="320" height="240" autoplay muted></video>
+<video id="camera" width="320" height="240" autoplay></video>
 
-<div id="heard">Voice status: Off</div>
-
+<div id="heard">Voice: Off</div>
 <div id="result"></div>
 
 <h2>Emergency Map</h2>
@@ -91,18 +86,11 @@ border-radius:12px;
 
 <script>
 
-/* SPEAK FUNCTION */
+/* SPEAK */
 
 function speak(text){
-
 const speech=new SpeechSynthesisUtterance(text);
-
-speech.volume=1;
-speech.rate=1;
-speech.pitch=1;
-
-window.speechSynthesis.speak(speech);
-
+speechSynthesis.speak(speech);
 }
 
 /* CAMERA */
@@ -121,13 +109,13 @@ setTimeout(fakeAI,2000);
 
 }catch(e){
 
-alert("Camera permission required");
+alert("Camera permission needed");
 
 }
 
 }
 
-/* FAKE AI MODEL (DEMO) */
+/* DEMO AI */
 
 function fakeAI(){
 
@@ -137,7 +125,7 @@ const result=injuries[Math.floor(Math.random()*injuries.length)];
 
 document.getElementById("result").innerHTML="Detected: "+result;
 
-speak("Scan complete. "+result+" detected.");
+speak(result+" detected");
 
 }
 
@@ -145,27 +133,25 @@ speak("Scan complete. "+result+" detected.");
 
 let recognition;
 
-async function startVoice(){
+function startVoice(){
 
-try{
+if(!('webkitSpeechRecognition' in window)){
 
-/* request microphone permission */
+alert("Voice commands require Chrome");
 
-await navigator.mediaDevices.getUserMedia({audio:true});
+return;
 
-const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+}
 
-recognition=new SpeechRecognition();
+recognition=new webkitSpeechRecognition();
 
 recognition.continuous=true;
-
 recognition.interimResults=false;
-
 recognition.lang="en-US";
 
 recognition.start();
 
-document.getElementById("heard").innerHTML="Voice Assistant Listening...";
+document.getElementById("heard").innerHTML="Listening...";
 
 recognition.onresult=function(event){
 
@@ -191,6 +177,12 @@ dispatchRescue();
 
 };
 
+recognition.onerror=function(event){
+
+document.getElementById("heard").innerHTML="Voice error: "+event.error;
+
+};
+
 recognition.onend=function(){
 
 recognition.start();
@@ -198,12 +190,6 @@ recognition.start();
 };
 
 speak("Voice assistant activated");
-
-}catch(e){
-
-alert("Microphone not available");
-
-}
 
 }
 
@@ -240,7 +226,7 @@ userMarker=L.marker([lat,lon]).addTo(map)
 
 function dispatchRescue(){
 
-if(!userMarker)return;
+if(!userMarker) return;
 
 const user=userMarker.getLatLng();
 
