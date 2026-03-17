@@ -2,10 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>MedAI Demo</title>
-
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0"></script>
-<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8"></script>
+<title>MedAI Emergency Demo</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -21,8 +18,8 @@ margin:0;
 }
 
 header{
-font-size:36px;
-padding:30px;
+font-size:34px;
+padding:25px;
 font-weight:bold;
 }
 
@@ -39,8 +36,14 @@ cursor:pointer;
 .scan{background:#3b82f6;color:white;}
 .rescue{background:#ef4444;color:white;}
 
-#webcam-container{
+video{
 margin-top:20px;
+border-radius:12px;
+}
+
+#result{
+margin-top:15px;
+font-size:20px;
 }
 
 #map{
@@ -48,7 +51,7 @@ width:90%;
 height:420px;
 margin:auto;
 margin-top:40px;
-border-radius:15px;
+border-radius:12px;
 }
 
 </style>
@@ -58,13 +61,15 @@ border-radius:15px;
 
 <header>MedAI AI Emergency Assistant</header>
 
-<p>Voice Activated • AI Injury Detection • Smart Rescue System</p>
+<p>Voice Activated • Injury Detection • Smart Rescue System</p>
 
-<button class="voice" onclick="startVoice()">🎤 Start Voice</button>
-<button class="scan" onclick="startScan()">Run AI Scan</button>
+<button class="voice" onclick="startVoice()">🎤 Start Voice Assistant</button>
+<button class="scan" onclick="startScan()">📷 Scan Injury</button>
 <button class="rescue" onclick="dispatchRescue()">🚑 Send Ambulance</button>
 
-<div id="webcam-container"></div>
+<br>
+
+<video id="camera" width="320" height="240" autoplay></video>
 
 <div id="result"></div>
 
@@ -74,94 +79,52 @@ border-radius:15px;
 
 <script>
 
-/* SPEECH */
+/* TEXT TO SPEECH */
 
 function speak(text){
 const speech=new SpeechSynthesisUtterance(text);
+speech.rate=1;
+speech.pitch=1;
 speechSynthesis.speak(speech);
 }
 
-/* AI MODEL */
-
-let model, webcam;
-
-const URL="https://teachablemachine.withgoogle.com/models/L3S9i1V7D/";
-
-async function loadModel(){
-
-const modelURL=URL+"model.json";
-const metadataURL=URL+"metadata.json";
-
-model=await tmImage.load(modelURL,metadataURL);
-
-}
-
-loadModel();
-
 /* CAMERA */
-
-async function initCamera(){
-
-webcam = new tmImage.Webcam(300,300,true);
-
-await webcam.setup();
-await webcam.play();
-
-document.getElementById("webcam-container").innerHTML="";
-document.getElementById("webcam-container").appendChild(webcam.canvas);
-
-window.requestAnimationFrame(loop);
-
-}
-
-async function loop(){
-webcam.update();
-requestAnimationFrame(loop);
-}
-
-/* AI SCAN */
 
 async function startScan(){
 
-await initCamera();
+const video=document.getElementById("camera");
 
-setTimeout(predict,2000);
+const stream=await navigator.mediaDevices.getUserMedia({video:true});
 
-}
+video.srcObject=stream;
 
-async function predict(){
-
-if(!model) return;
-
-const prediction=await model.predict(webcam.canvas);
-
-let best=prediction[0];
-
-prediction.forEach(p=>{
-if(p.probability>best.probability) best=p;
-});
-
-document.getElementById("result").innerHTML=
-
-"<h3>"+best.className+"</h3>"+
-"<p>"+(best.probability*100).toFixed(1)+"%</p>";
-
-speak("Injury detected "+best.className);
+setTimeout(fakeAI,2000);
 
 }
 
-/* VOICE */
+/* DEMO AI */
+
+function fakeAI(){
+
+const injuries=["Minor Cut","Bruise","Burn","No Injury"];
+
+const result=injuries[Math.floor(Math.random()*injuries.length)];
+
+document.getElementById("result").innerHTML="Detected: "+result;
+
+speak("Scan complete. "+result+" detected.");
+
+}
+
+/* VOICE SYSTEM */
 
 function startVoice(){
 
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
 if(!SpeechRecognition){
-
-alert("Voice not supported");
-
+alert("Voice recognition works best in Chrome");
 return;
-
 }
 
 const recognition=new SpeechRecognition();
@@ -175,19 +138,19 @@ recognition.onresult=function(event){
 
 let speech=event.results[event.results.length-1][0].transcript.toLowerCase();
 
-console.log(speech);
+console.log("heard:",speech);
 
-if(speech.includes("med ai scan")){
+if(speech.includes("med ai scan") || speech.includes("medai scan")){
 
-speak("Starting scan");
+speak("Starting injury scan");
 
 startScan();
 
 }
 
-if(speech.includes("med ai help")){
+if(speech.includes("med ai help") || speech.includes("medai help")){
 
-speak("Ambulance dispatched");
+speak("Dispatching ambulance");
 
 dispatchRescue();
 
@@ -199,6 +162,8 @@ recognition.onend=function(){
 recognition.start();
 };
 
+speak("Voice assistant activated");
+
 }
 
 /* MAP */
@@ -209,7 +174,7 @@ let ambulanceMarker;
 
 const ambulanceIcon=L.icon({
 iconUrl:"https://cdn-icons-png.flaticon.com/512/2967/2967350.png",
-iconSize:[40,40]
+iconSize:[50,50]
 });
 
 navigator.geolocation.getCurrentPosition(function(pos){
@@ -229,7 +194,7 @@ userMarker=L.marker([lat,lon]).addTo(map)
 
 });
 
-/* RESCUE */
+/* AMBULANCE */
 
 function dispatchRescue(){
 
@@ -239,7 +204,8 @@ const user=userMarker.getLatLng();
 
 const start=[user.lat+0.01,user.lng-0.01];
 
-ambulanceMarker=L.marker(start,{icon:ambulanceIcon}).addTo(map);
+ambulanceMarker=L.marker(start,{icon:ambulanceIcon}).addTo(map)
+.bindPopup("Ambulance");
 
 moveAmbulance(start,user);
 
@@ -252,8 +218,8 @@ let lng=start[1];
 
 const interval=setInterval(()=>{
 
-lat+=(end.lat-lat)*0.15;
-lng+=(end.lng-lng)*0.15;
+lat+=(end.lat-lat)*0.1;
+lng+=(end.lng-lng)*0.1;
 
 ambulanceMarker.setLatLng([lat,lng]);
 
