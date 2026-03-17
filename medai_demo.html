@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedAI Demo</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
+
+<style>
+
+body{
+font-family:Arial;
+background:#0f172a;
+color:white;
+text-align:center;
+margin:0;
+padding:30px;
+}
+
+h1{
+color:#38bdf8;
+}
+
+video{
+width:340px;
+border-radius:12px;
+margin-top:20px;
+}
+
+button{
+padding:12px 22px;
+margin:10px;
+border:none;
+border-radius:8px;
+font-size:16px;
+cursor:pointer;
+}
+
+.scan{background:#22c55e;color:white;}
+.voice{background:#38bdf8;color:white;}
+.rescue{background:#ef4444;color:white;}
+
+#result{
+margin-top:20px;
+font-size:18px;
+}
+
+</style>
+</head>
+
+<body>
+
+<h1>MedAI Emergency Assistant</h1>
+
+<p>Say <b>"MedAI"</b> or press scan</p>
+
+<video id="camera" autoplay playsinline></video>
+
+<br>
+
+<button class="scan" onclick="scan()">AI Scan</button>
+<button class="voice" onclick="startVoice()">Voice Activate</button>
+<button class="rescue" onclick="sendRescue()">Send Rescue</button>
+
+<p id="result"></p>
+
+<script>
+
+let model;
+let video=document.getElementById("camera");
+let result=document.getElementById("result");
+
+
+// START CAMERA
+
+async function startCamera(){
+
+try{
+const stream=await navigator.mediaDevices.getUserMedia({video:true});
+video.srcObject=stream;
+}catch(err){
+result.innerHTML="Camera access denied.";
+}
+
+}
+
+
+// LOAD AI MODEL
+
+async function loadAI(){
+
+result.innerHTML="Loading AI model...";
+
+model=await mobilenet.load();
+
+result.innerHTML="AI Ready";
+
+}
+
+
+// AI SCAN
+
+async function scan(){
+
+result.innerHTML="Scanning injury...";
+
+const predictions=await model.classify(video);
+
+let label=predictions[0].className;
+
+let advice="";
+
+if(label.includes("hand")||label.includes("skin")||label.includes("arm")){
+advice="Possible minor injury. Clean wound and apply bandage.";
+}
+else{
+advice="No clear injury detected. If pain continues seek medical help.";
+}
+
+result.innerHTML="AI detected: "+label+"<br>"+advice;
+
+resetTimer();
+
+}
+
+
+// IMPROVED VOICE ACTIVATION
+
+function startVoice(){
+
+const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+
+if(!SpeechRecognition){
+alert("Speech recognition not supported in this browser.");
+return;
+}
+
+const recognition=new SpeechRecognition();
+
+recognition.lang="en-US";
+recognition.continuous=false;
+recognition.interimResults=false;
+
+recognition.onstart=function(){
+result.innerHTML="🎤 Listening...";
+};
+
+recognition.onresult=function(event){
+
+let text=event.results[0][0].transcript.toLowerCase();
+
+result.innerHTML="Heard: "+text;
+
+if(text.includes("medai")){
+scan();
+}
+
+};
+
+recognition.onerror=function(event){
+console.log(event.error);
+result.innerHTML="Voice error: "+event.error;
+};
+
+recognition.start();
+
+}
+
+
+// RESCUE ALERT
+
+function sendRescue(){
+
+result.innerHTML="🚑 Rescue team alerted. Location shared.";
+
+resetTimer();
+
+}
+
+
+// INACTIVITY DETECTION
+
+let inactivityTimer;
+
+function resetTimer(){
+
+clearTimeout(inactivityTimer);
+
+inactivityTimer=setTimeout(()=>{
+
+let help=confirm("MedAI detected inactivity. Do you need help?");
+
+if(help){
+sendRescue();
+}
+
+},20000); // 20 seconds for demo
+
+}
+
+document.onmousemove=resetTimer;
+document.onkeypress=resetTimer;
+
+
+// START SYSTEM
+
+startCamera();
+loadAI();
+resetTimer();
+
+</script>
+
+</body>
+</html>
