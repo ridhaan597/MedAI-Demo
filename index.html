@@ -12,92 +12,83 @@
 
 <style>
 body{
-  font-family:Arial;
-  background:#0f172a;
-  color:white;
-  text-align:center;
-  margin:0;
+    font-family:Arial;
+    background:#0f172a;
+    color:white;
+    text-align:center;
+    margin:0;
 }
-
 header{
-  font-size:32px;
-  padding:25px;
-  font-weight:bold;
+    font-size:32px;
+    padding:25px;
+    font-weight:bold;
 }
-
 button{
-  padding:12px 20px;
-  margin:10px;
-  border:none;
-  border-radius:20px;
-  font-size:16px;
-  cursor:pointer;
+    padding:12px 20px;
+    margin:10px;
+    border:none;
+    border-radius:20px;
+    font-size:16px;
+    cursor:pointer;
 }
-
 .voice{background:#22c55e;color:white;}
 .scan{background:#3b82f6;color:white;}
 .rescue{background:#ef4444;color:white;}
-
 video{
-  margin-top:20px;
-  border-radius:12px;
+    margin-top:20px;
+    border-radius:12px;
 }
-
 #heard{
-  margin-top:15px;
-  font-size:18px;
-  color:#38bdf8;
+    margin-top:15px;
+    font-size:18px;
+    color:#38bdf8;
 }
-
 #result{
-  margin-top:10px;
-  font-size:22px;
+    margin-top:10px;
+    font-size:22px;
 }
-
 #status{
-  margin-top:10px;
-  color:#facc15;
+    margin-top:10px;
+    color:#facc15;
 }
-
 #map{
-  width:90%;
-  height:450px;
-  margin:auto;
-  margin-top:40px;
-  border-radius:12px;
+    width:90%;
+    height:450px;
+    margin:auto;
+    margin-top:40px;
+    border-radius:12px;
 }
-
 .ambulanceIcon{
-  font-size:70px;
+    font-size:70px;
 }
-
-/* First Aid Cards */
-#firstAidContainer{
-  display:flex;
-  flex-wrap:wrap;
-  justify-content:center;
-  margin-top:20px;
-  gap:15px;
+.firstAidContainer{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    gap:20px;
+    margin-top:20px;
 }
-
 .firstAidCard{
-  background:#1e293b;
-  border-radius:12px;
-  border:1px solid #334155;
-  padding:15px;
-  min-width:180px;
-  max-width:250px;
-  text-align:left;
+    background:#0f172a;
+    border:1px solid #1e293b;
+    border-radius:14px;
+    padding:20px;
+    width:220px;
+    text-align:left;
+    box-shadow:0 0 12px rgba(34,197,94,0.2);
+    transition:0.3s;
 }
-
 .firstAidCard h4{
-  color:#22c55e;
-  margin-bottom:10px;
+    color:#22c55e;
+    margin-bottom:10px;
 }
-
-.firstAidCard li{
-  font-size:14px;
-  margin-bottom:5px;
+.firstAidCard p{
+    color:#cbd5f5;
+    font-size:14px;
+}
+.firstAidCard:hover{
+    transform:scale(1.05);
+    box-shadow:0 0 25px rgba(34,197,94,0.5);
 }
 </style>
 </head>
@@ -115,14 +106,12 @@ video{
 <br>
 
 <div id="status">Loading AI model...</div>
-
 <video id="camera" width="320" height="240" autoplay playsinline></video>
-
 <div id="heard">Voice: Off</div>
 <div id="result"></div>
 
-<!-- First Aid Cards -->
-<div id="firstAidContainer"></div>
+<h2>First Aid Instructions</h2>
+<div id="firstAid" class="firstAidContainer"></div>
 
 <h2>Emergency Map</h2>
 <div id="map"></div>
@@ -133,6 +122,16 @@ function speak(text){
     const speech = new SpeechSynthesisUtterance(text);
     speechSynthesis.speak(speech);
 }
+
+/* FIRST AID STEPS */
+const firstAidInstructions = {
+    "bruise": ["Apply cold compress for 15-20 minutes","Rest the area","Elevate if possible","Avoid massaging injured spot"],
+    "cut": ["Clean wound with clean water","Apply antiseptic","Cover with sterile bandage","Change dressing daily"],
+    "burn": ["Cool burn with running water for 10-20 minutes","Do not apply ice","Cover with sterile gauze","Seek medical help if severe"],
+    "sprain": ["Rest injured area","Apply ice for 15 minutes every 2-3 hours","Compress with elastic bandage","Elevate above heart level"],
+    "fracture": ["Immobilize the limb","Do not try to realign bones","Apply ice to reduce swelling","Seek emergency medical attention"],
+    "abrasion": ["Rinse wound with clean water","Remove dirt with mild soap","Apply antibiotic ointment","Cover with sterile dressing"]
+};
 
 /* MODEL */
 let model;
@@ -145,7 +144,6 @@ async function loadModel(){
         const modelURL = MODEL_URL + "model.json";
         const metadataURL = MODEL_URL + "metadata.json";
 
-        console.log("Loading model from:", modelURL);
         model = await tmImage.load(modelURL, metadataURL);
 
         modelReady = true;
@@ -185,42 +183,12 @@ async function startScan(){
     }
 }
 
-/* FIRST AID STEPS */
-const firstAidSteps = {
-  "bruise": [
-    "Apply a cold compress for 15-20 minutes",
-    "Elevate the bruised area",
-    "Rest the affected part"
-  ],
-  "burn": [
-    "Cool the burn under running water for 10-20 minutes",
-    "Cover with a clean, non-stick dressing",
-    "Take pain relief if necessary"
-  ],
-  "cut": [
-    "Wash the wound gently with soap and water",
-    "Apply an antiseptic",
-    "Cover with a sterile bandage"
-  ],
-  "sprain": [
-    "Rest the injured area",
-    "Apply ice packs for 15-20 minutes",
-    "Compress with an elastic bandage",
-    "Elevate the limb"
-  ],
-  "abrasion": [
-    "Clean the wound with water",
-    "Remove any dirt or debris",
-    "Apply antibiotic ointment",
-    "Cover with a sterile dressing"
-  ]
-};
-
 /* AI PREDICTION */
 async function predict(){
     if(!modelReady) return;
 
     const prediction = await model.predict(video);
+
     let best = prediction[0];
     for(let i=1; i<prediction.length; i++){
         if(prediction[i].probability > best.probability){
@@ -228,30 +196,32 @@ async function predict(){
         }
     }
 
-    const resultText = best.className + " (" + (best.probability*100).toFixed(1) + "%)";
-    document.getElementById("result").innerHTML = resultText;
+    const confidenceThreshold = 0.4; // only show first aid if >40% confident
+    const className = best.className.toLowerCase();
+
+    document.getElementById("result").innerHTML =
+        best.className + " (" + (best.probability*100).toFixed(1) + "%)";
+    
     speak(best.className + " detected");
 
-    // Display first aid steps
-    const steps = firstAidSteps[best.className];
-    displayFirstAid(steps);
-}
+    const firstAidDiv = document.getElementById("firstAid");
+    firstAidDiv.innerHTML = "";
 
-function displayFirstAid(steps){
-    const container = document.getElementById("firstAidContainer");
-    container.innerHTML = ""; // clear previous
-
-    if(!steps){
-        container.innerHTML = "<p>No instructions available.</p>";
+    if(best.probability < confidenceThreshold){
+        firstAidDiv.innerHTML = "<p style='color:#facc15'>AI unsure, try another scan.</p>";
         return;
     }
 
-    steps.forEach((step, i)=>{
-        const card = document.createElement("div");
-        card.className = "firstAidCard";
-        card.innerHTML = `<h4>Step ${i+1}</h4><li>${step}</li>`;
-        container.appendChild(card);
-    });
+    if(firstAidInstructions[className]){
+        firstAidInstructions[className].forEach(step=>{
+            const card = document.createElement("div");
+            card.className = "firstAidCard";
+            card.innerHTML = `<h4>${className.charAt(0).toUpperCase() + className.slice(1)}</h4><p>${step}</p>`;
+            firstAidDiv.appendChild(card);
+        });
+    } else {
+        firstAidDiv.innerHTML = "<p style='color:#facc15'>No first aid instructions for this injury.</p>";
+    }
 }
 
 /* VOICE */
