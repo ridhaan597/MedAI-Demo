@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>MedAI Demo</title>
+<title>MedAI Emergency Assistant</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -133,14 +133,23 @@ speak(result+" detected");
 
 let recognition;
 
-function startVoice(){
+async function startVoice(){
 
-if(!('webkitSpeechRecognition' in window)){
+try{
 
-alert("Voice commands require Chrome");
+const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+stream.getTracks().forEach(track => track.stop());
 
+}catch(e){
+
+alert("Microphone permission required");
 return;
 
+}
+
+if(!('webkitSpeechRecognition' in window)){
+alert("Use Google Chrome");
+return;
 }
 
 recognition=new webkitSpeechRecognition();
@@ -159,17 +168,30 @@ let speech=event.results[event.results.length-1][0].transcript.toLowerCase();
 
 document.getElementById("heard").innerHTML="Heard: "+speech;
 
-if(speech.includes("med ai scan") || speech.includes("medai scan")){
+/* SCAN COMMAND */
 
-speak("Starting scan");
+if(
+speech.includes("scan") ||
+speech.includes("scan injury") ||
+speech.includes("check injury")
+){
+
+speak("Starting injury scan");
 
 startScan();
 
 }
 
-if(speech.includes("med ai help") || speech.includes("medai help")){
+/* HELP COMMAND */
 
-speak("Sending ambulance");
+if(
+speech.includes("help") ||
+speech.includes("ambulance") ||
+speech.includes("send ambulance") ||
+speech.includes("emergency")
+){
+
+speak("Dispatching ambulance");
 
 dispatchRescue();
 
@@ -178,15 +200,11 @@ dispatchRescue();
 };
 
 recognition.onerror=function(event){
-
 document.getElementById("heard").innerHTML="Voice error: "+event.error;
-
 };
 
 recognition.onend=function(){
-
 recognition.start();
-
 };
 
 speak("Voice assistant activated");
