@@ -112,24 +112,34 @@ speechSynthesis.speak(speech);
 let model;
 let modelReady=false;
 
-const MODEL_URL="https://teachablemachine.withgoogle.com/models/0WBW0685Z/";
+const MODEL_URL = "https://teachablemachine.withgoogle.com/models/0WBW0685Z/";
 
 async function loadModel(){
+
+document.getElementById("status").innerText="Loading AI model...";
 
 try{
 
 const modelURL = MODEL_URL + "model.json";
 const metadataURL = MODEL_URL + "metadata.json";
 
+console.log("Loading model from:", modelURL);
+
 model = await tmImage.load(modelURL, metadataURL);
 
 modelReady=true;
 
-document.getElementById("status").innerHTML="AI Ready";
+document.getElementById("status").innerText="AI Ready";
 
-}catch(err){
+console.log("Model loaded successfully");
 
-document.getElementById("status").innerHTML="Model failed to load";
+}catch(error){
+
+console.error("Model load error:", error);
+
+document.getElementById("status").innerText="Model failed to load";
+
+alert("Model failed to load. Check console (F12).");
 
 }
 
