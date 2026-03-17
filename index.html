@@ -12,26 +12,26 @@
 
 <style>
 body{
-font-family:Arial;
-background:#0f172a;
-color:white;
-text-align:center;
-margin:0;
+    font-family:Arial;
+    background:#0f172a;
+    color:white;
+    text-align:center;
+    margin:0;
 }
 
 header{
-font-size:32px;
-padding:25px;
-font-weight:bold;
+    font-size:32px;
+    padding:25px;
+    font-weight:bold;
 }
 
 button{
-padding:12px 20px;
-margin:10px;
-border:none;
-border-radius:20px;
-font-size:16px;
-cursor:pointer;
+    padding:12px 20px;
+    margin:10px;
+    border:none;
+    border-radius:20px;
+    font-size:16px;
+    cursor:pointer;
 }
 
 .voice{background:#22c55e;color:white;}
@@ -39,36 +39,62 @@ cursor:pointer;
 .rescue{background:#ef4444;color:white;}
 
 video{
-margin-top:20px;
-border-radius:12px;
+    margin-top:20px;
+    border-radius:12px;
 }
 
 #heard{
-margin-top:15px;
-font-size:18px;
-color:#38bdf8;
+    margin-top:15px;
+    font-size:18px;
+    color:#38bdf8;
 }
 
 #result{
-margin-top:10px;
-font-size:22px;
+    margin-top:10px;
+    font-size:22px;
 }
 
 #status{
-margin-top:10px;
-color:#facc15;
+    margin-top:10px;
+    color:#facc15;
 }
 
 #map{
-width:90%;
-height:450px;
-margin:auto;
-margin-top:40px;
-border-radius:12px;
+    width:90%;
+    height:450px;
+    margin:auto;
+    margin-top:40px;
+    border-radius:12px;
 }
 
 .ambulanceIcon{
-font-size:70px;
+    font-size:70px;
+}
+
+/* First Aid Card */
+.first-aid-card{
+    background:#1e293b;
+    border:1px solid #22c55e;
+    border-radius:14px;
+    padding:20px;
+    max-width:500px;
+    margin:20px auto 0 auto;
+    text-align:left;
+    color:#cbd5f5;
+    box-shadow:0 0 20px rgba(34,197,94,0.4);
+}
+
+.first-aid-card h3{
+    color:#22c55e;
+    margin-bottom:10px;
+}
+
+.first-aid-card ul{
+    padding-left:20px;
+}
+
+.first-aid-card li{
+    margin-bottom:8px;
 }
 </style>
 </head>
@@ -137,7 +163,6 @@ async function startScan(){
     }
 
     try{
-        // Stop previous video stream if any
         if(video.srcObject){
             video.srcObject.getTracks().forEach(track => track.stop());
         }
@@ -154,6 +179,34 @@ async function startScan(){
     }
 }
 
+/* FIRST AID INSTRUCTIONS */
+const firstAidSteps = {
+    "minor cut": [
+        "Wash the wound with clean water",
+        "Apply antiseptic",
+        "Cover with sterile bandage",
+        "Change dressing daily"
+    ],
+    "possible burn": [
+        "Cool the burn under running water for 10-20 min",
+        "Remove tight items nearby",
+        "Cover with clean non-stick dressing",
+        "Do not apply ice or butter"
+    ],
+    "bruise": [
+        "Apply a cold compress for 10-15 minutes",
+        "Elevate the bruised area if possible",
+        "Rest and avoid pressure",
+        "Use pain relievers if needed"
+    ],
+    "possible sprain": [
+        "Rest the injured area",
+        "Apply ice for 15-20 min every 2-3 hours",
+        "Compress with elastic bandage",
+        "Elevate the limb above heart level"
+    ]
+};
+
 /* AI PREDICTION */
 async function predict(){
     if(!modelReady) return;
@@ -166,9 +219,26 @@ async function predict(){
         }
     }
 
+    const injury = best.className.toLowerCase();
+
+    // Show detection result
     document.getElementById("result").innerHTML =
-        best.className + " (" + (best.probability*100).toFixed(1) + "%)";
-    speak(best.className + " detected");
+        `<strong>${best.className}</strong> (${(best.probability*100).toFixed(1)}%)`;
+
+    // Show first aid steps in card format
+    if(firstAidSteps[injury]){
+        let stepsHTML = `<div class="first-aid-card"><h3>First Aid Steps:</h3><ul>`;
+        firstAidSteps[injury].forEach(step => {
+            stepsHTML += `<li>${step}</li>`;
+        });
+        stepsHTML += `</ul></div>`;
+        document.getElementById("result").innerHTML += stepsHTML;
+    } else {
+        document.getElementById("result").innerHTML += 
+            `<p style="color:#facc15;margin-top:10px">No first aid instructions available.</p>`;
+    }
+
+    speak(best.className + " detected. First aid instructions displayed.");
 }
 
 /* VOICE */
@@ -176,7 +246,7 @@ let recognition;
 async function startVoice(){
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio:true });
-        stream.getTracks().forEach(track => track.stop()); // stop immediately, just for permission
+        stream.getTracks().forEach(track => track.stop());
 
         recognition = new webkitSpeechRecognition();
         recognition.continuous = true;
