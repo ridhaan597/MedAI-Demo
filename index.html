@@ -1,39 +1,45 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MedAI Demo</title>
+<title>MedAI Emergency Demo</title>
 
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
 <style>
 
 body{
-font-family:Arial;
+font-family: Arial;
 background:#0f172a;
 color:white;
-text-align:center;
 margin:0;
-padding:30px;
+display:flex;
+justify-content:center;
+align-items:center;
+height:100vh;
+}
+
+.phone{
+width:360px;
+height:700px;
+background:#020617;
+border-radius:30px;
+padding:20px;
+box-shadow:0 0 30px black;
+overflow:auto;
 }
 
 h1{
-color:#38bdf8;
-}
-
-video{
-width:340px;
-border-radius:12px;
-margin-top:20px;
+text-align:center;
+color:#22c55e;
 }
 
 button{
-padding:12px 22px;
-margin:10px;
+width:100%;
+padding:15px;
+margin-top:10px;
 border:none;
-border-radius:8px;
+border-radius:10px;
 font-size:16px;
 cursor:pointer;
 }
@@ -42,9 +48,22 @@ cursor:pointer;
 .voice{background:#38bdf8;color:white;}
 .rescue{background:#ef4444;color:white;}
 
-#result{
-margin-top:20px;
-font-size:18px;
+video{
+width:100%;
+border-radius:10px;
+margin-top:10px;
+}
+
+#map{
+height:250px;
+margin-top:10px;
+border-radius:10px;
+}
+
+.status{
+margin-top:10px;
+text-align:center;
+color:#94a3b8;
 }
 
 </style>
@@ -52,163 +71,156 @@ font-size:18px;
 
 <body>
 
-<h1>MedAI Emergency Assistant</h1>
+<div class="phone">
 
-<p>Say <b>"MedAI"</b> or press scan</p>
+<h1>MedAI</h1>
 
-<video id="camera" autoplay playsinline></video>
+<p style="text-align:center">AI Emergency Assistant</p>
 
-<br>
+<button class="scan" onclick="startScan()">AI Injury Scan</button>
 
-<button class="scan" onclick="scan()">AI Scan</button>
-<button class="voice" onclick="startVoice()">Voice Activate</button>
-<button class="rescue" onclick="sendRescue()">Send Rescue</button>
+<video id="camera" autoplay></video>
 
-<p id="result"></p>
+<button class="voice" onclick="startVoice()">Activate Voice Help</button>
+
+<button class="rescue" onclick="callRescue()">Emergency Rescue</button>
+
+<div id="map"></div>
+
+<div class="status" id="status">Status: Waiting</div>
+
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
 
-let model;
-let video=document.getElementById("camera");
-let result=document.getElementById("result");
+let userLat
+let userLng
+let rescueMarker
 
+// CAMERA
 
-// START CAMERA
+async function startScan(){
 
-async function startCamera(){
+document.getElementById("status").innerText="Scanning with AI..."
 
-try{
-const stream=await navigator.mediaDevices.getUserMedia({video:true});
-video.srcObject=stream;
-}catch(err){
-result.innerHTML="Camera access denied.";
-}
+let stream=await navigator.mediaDevices.getUserMedia({video:true})
 
-}
+document.getElementById("camera").srcObject=stream
 
+setTimeout(()=>{
 
-// LOAD AI MODEL
+let injuries=["Minor Cut Detected","Possible Fracture","Bruising Detected","No Injury Found"]
 
-async function loadAI(){
+let result=injuries[Math.floor(Math.random()*injuries.length)]
 
-result.innerHTML="Loading AI model...";
+document.getElementById("status").innerText="AI Result: "+result
 
-model=await mobilenet.load();
-
-result.innerHTML="AI Ready";
+},3000)
 
 }
 
-
-// AI SCAN
-
-async function scan(){
-
-result.innerHTML="Scanning injury...";
-
-const predictions=await model.classify(video);
-
-let label=predictions[0].className;
-
-let advice="";
-
-if(label.includes("hand")||label.includes("skin")||label.includes("arm")){
-advice="Possible minor injury. Clean wound and apply bandage.";
-}
-else{
-advice="No clear injury detected. If pain continues seek medical help.";
-}
-
-result.innerHTML="AI detected: "+label+"<br>"+advice;
-
-resetTimer();
-
-}
-
-
-// IMPROVED VOICE ACTIVATION
+// VOICE ACTIVATION
 
 function startVoice(){
 
-const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+let SpeechRecognition=window.SpeechRecognition || window.webkitSpeechRecognition
 
-if(!SpeechRecognition){
-alert("Speech recognition not supported in this browser.");
-return;
-}
+let recognition=new SpeechRecognition()
 
-const recognition=new SpeechRecognition();
-
-recognition.lang="en-US";
-recognition.continuous=false;
-recognition.interimResults=false;
-
-recognition.onstart=function(){
-result.innerHTML="🎤 Listening...";
-};
+recognition.continuous=true
+recognition.lang="en-US"
 
 recognition.onresult=function(event){
 
-let text=event.results[0][0].transcript.toLowerCase();
+let speech=event.results[event.results.length-1][0].transcript.toLowerCase()
 
-result.innerHTML="Heard: "+text;
+if(speech.includes("help") || speech.includes("medai")){
 
-if(text.includes("medai")){
-scan();
-}
-
-};
-
-recognition.onerror=function(event){
-console.log(event.error);
-result.innerHTML="Voice error: "+event.error;
-};
-
-recognition.start();
+callRescue()
 
 }
 
+}
 
-// RESCUE ALERT
+recognition.start()
 
-function sendRescue(){
-
-result.innerHTML="🚑 Rescue team alerted. Location shared.";
-
-resetTimer();
+document.getElementById("status").innerText="Voice listening..."
 
 }
 
+// MAP
+
+let map=L.map('map').setView([20,0],2)
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+maxZoom:19
+}).addTo(map)
+
+navigator.geolocation.getCurrentPosition(position=>{
+
+userLat=position.coords.latitude
+userLng=position.coords.longitude
+
+map.setView([userLat,userLng],13)
+
+L.marker([userLat,userLng]).addTo(map).bindPopup("Your Location")
+
+})
+
+// RESCUE TEAM
+
+function callRescue(){
+
+document.getElementById("status").innerText="Rescue team dispatched..."
+
+let startLat=userLat+0.05
+let startLng=userLng+0.05
+
+rescueMarker=L.marker([startLat,startLng]).addTo(map).bindPopup("Rescue Team")
+
+let step=0
+
+let interval=setInterval(()=>{
+
+startLat-=0.002
+startLng-=0.002
+
+rescueMarker.setLatLng([startLat,startLng])
+
+step++
+
+if(step>25){
+
+clearInterval(interval)
+
+document.getElementById("status").innerText="Rescue team has arrived"
+
+}
+
+},500)
+
+}
 
 // INACTIVITY DETECTION
 
-let inactivityTimer;
+let inactiveTime=0
 
-function resetTimer(){
+setInterval(()=>{
 
-clearTimeout(inactivityTimer);
+inactiveTime++
 
-inactivityTimer=setTimeout(()=>{
+if(inactiveTime>30){
 
-let help=confirm("MedAI detected inactivity. Do you need help?");
-
-if(help){
-sendRescue();
-}
-
-},20000); // 20 seconds for demo
+callRescue()
 
 }
 
-document.onmousemove=resetTimer;
-document.onkeypress=resetTimer;
+},1000)
 
-
-// START SYSTEM
-
-startCamera();
-loadAI();
-resetTimer();
+document.onmousemove=()=>inactiveTime=0
+document.onkeypress=()=>inactiveTime=0
 
 </script>
 
