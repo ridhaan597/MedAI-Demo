@@ -55,6 +55,11 @@ margin-top:10px;
 font-size:22px;
 }
 
+#status{
+margin-top:10px;
+color:#facc15;
+}
+
 #map{
 width:90%;
 height:450px;
@@ -64,7 +69,7 @@ border-radius:12px;
 }
 
 .ambulanceIcon{
-font-size:65px;
+font-size:70px;
 }
 
 </style>
@@ -77,10 +82,12 @@ font-size:65px;
 <p>Voice Activated • AI Injury Detection • Smart Rescue</p>
 
 <button class="voice" onclick="startVoice()">🎤 Start Voice Assistant</button>
-<button class="scan" onclick="predict()">📷 Scan Injury</button>
+<button class="scan" onclick="startScan()">📷 Scan Injury</button>
 <button class="rescue" onclick="dispatchRescue()">🚑 Send Ambulance</button>
 
 <br>
+
+<div id="status">Loading AI model...</div>
 
 <video id="camera" width="320" height="240" autoplay playsinline></video>
 
@@ -93,58 +100,80 @@ font-size:65px;
 
 <script>
 
-/* TEXT TO SPEECH */
+/* SPEAK */
 
 function speak(text){
 const speech=new SpeechSynthesisUtterance(text);
 speechSynthesis.speak(speech);
 }
 
-/* LOAD MODEL */
+/* MODEL */
 
 let model;
+let modelReady=false;
+
 const MODEL_URL="https://teachablemachine.withgoogle.com/models/0WBW0685Z/";
 
 async function loadModel(){
+
+try{
 
 const modelURL = MODEL_URL + "model.json";
 const metadataURL = MODEL_URL + "metadata.json";
 
 model = await tmImage.load(modelURL, metadataURL);
 
+modelReady=true;
+
+document.getElementById("status").innerHTML="AI Ready";
+
+}catch(err){
+
+document.getElementById("status").innerHTML="Model failed to load";
+
+}
+
 }
 
 loadModel();
 
-/* START CAMERA ONCE */
+/* CAMERA */
 
 let video=document.getElementById("camera");
 
-async function initCamera(){
+async function startScan(){
+
+if(!modelReady){
+
+alert("AI model still loading");
+
+return;
+
+}
 
 try{
 
-const stream=await navigator.mediaDevices.getUserMedia({video:true});
-video.srcObject=stream;
+const stream = await navigator.mediaDevices.getUserMedia({video:true});
 
-}catch(e){
+video.srcObject = stream;
 
-alert("Camera permission required");
+video.onloadeddata = function(){
+
+setTimeout(predict,1500);
+
+};
+
+}catch(err){
+
+alert("Please allow camera access");
 
 }
 
 }
-
-initCamera();
 
 /* AI PREDICTION */
 
 async function predict(){
-
-if(!model){
-alert("Model still loading");
-return;
-}
 
 const prediction=await model.predict(video);
 
@@ -163,7 +192,7 @@ speak(best.className+" detected");
 
 }
 
-/* VOICE SYSTEM */
+/* VOICE */
 
 let recognition;
 
@@ -184,22 +213,17 @@ document.getElementById("heard").innerHTML="Listening...";
 recognition.onresult=function(event){
 
 let speech=event.results[event.results.length-1][0].transcript
-.toLowerCase()
-.trim();
+.toLowerCase().trim();
 
 document.getElementById("heard").innerHTML="Heard: "+speech;
-
-/* SCAN COMMAND */
 
 if(speech.includes("scan")){
 
 speak("Starting scan");
 
-predict();
+startScan();
 
 }
-
-/* HELP COMMAND */
 
 if(
 speech.includes("help") ||
