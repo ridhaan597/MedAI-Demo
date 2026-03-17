@@ -8,7 +8,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8"></script>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <style>
@@ -54,7 +53,7 @@ margin-right:auto;
 
 #map{
 width:90%;
-height:400px;
+height:420px;
 margin:auto;
 margin-top:40px;
 border-radius:15px;
@@ -72,6 +71,7 @@ border-radius:15px;
 <button class="voice" onclick="startVoice()">🎤 Start Voice Assistant</button>
 <button class="scan" onclick="initCamera()">Open Scanner</button>
 <button class="scan" onclick="predict()">Run AI Scan</button>
+<button class="rescue" onclick="dispatchRescue()">🚑 Dispatch Rescue</button>
 
 <br>
 
@@ -81,28 +81,22 @@ border-radius:15px;
 
 <h2>Emergency Response Map</h2>
 
-<button class="rescue" onclick="dispatchRescue()">🚑 Dispatch Rescue Team</button>
-
 <div id="map"></div>
 
 <script>
 
-let model;
-let webcamStream;
-
 /* TEXT TO SPEECH */
 
 function speak(text){
-
 const speech=new SpeechSynthesisUtterance(text);
 speech.rate=1;
 speech.pitch=1;
-
 speechSynthesis.speak(speech);
-
 }
 
-/* AI MODEL */
+/* LOAD AI MODEL */
+
+let model;
 
 const URL="https://teachablemachine.withgoogle.com/models/L3S9i1V7D/";
 
@@ -123,9 +117,9 @@ async function initCamera(){
 
 const video=document.getElementById("webcam");
 
-webcamStream=await navigator.mediaDevices.getUserMedia({video:true});
+const stream=await navigator.mediaDevices.getUserMedia({video:true});
 
-video.srcObject=webcamStream;
+video.srcObject=stream;
 
 }
 
@@ -145,35 +139,31 @@ prediction.forEach(p=>{
 if(p.probability>best.probability) best=p;
 });
 
-let aid="Monitor injury.";
-
-if(best.className=="Cut")
-aid="Apply pressure and disinfect.";
-
-if(best.className=="Burn")
-aid="Cool burn with water.";
-
-if(best.className=="Bruise")
-aid="Apply ice pack.";
-
 document.getElementById("scanPanel").innerHTML=
 "<h3>Detected: "+best.className+"</h3>"+
-"<p>Probability: "+(best.probability*100).toFixed(1)+"%</p>"+
-"<p><b>First Aid:</b> "+aid+"</p>";
+"<p>Probability: "+(best.probability*100).toFixed(1)+"%</p>";
 
-speak("Injury detected. "+best.className);
+speak("Injury detected: "+best.className);
 
 }
 
-/* VOICE */
+/* VOICE SYSTEM */
+
+let recognition;
 
 function startVoice(){
 
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-const recognition = new SpeechRecognition();
+if(!SpeechRecognition){
+alert("Use Google Chrome for voice commands");
+return;
+}
+
+recognition = new SpeechRecognition();
 
 recognition.continuous=true;
+recognition.interimResults=false;
 recognition.lang="en-US";
 
 recognition.start();
@@ -182,7 +172,9 @@ recognition.onresult=function(event){
 
 let speech=event.results[event.results.length-1][0].transcript.toLowerCase();
 
-if(speech.includes("med ai scan")){
+console.log("Heard:",speech);
+
+if(speech.includes("med ai scan") || speech.includes("medai scan")){
 
 speak("Scanning injury now");
 
@@ -192,15 +184,23 @@ setTimeout(()=>predict(),2000);
 
 }
 
-if(speech.includes("med ai help")){
+if(speech.includes("med ai help") || speech.includes("medai help")){
 
-speak("Emergency services have been dispatched");
+speak("Emergency services dispatched");
 
 dispatchRescue();
 
 }
 
-}
+};
+
+recognition.onend=function(){
+
+/* restart listening */
+
+recognition.start();
+
+};
 
 speak("Voice assistant activated");
 
@@ -211,6 +211,11 @@ speak("Voice assistant activated");
 let map;
 let userMarker;
 let ambulanceMarker;
+
+const ambulanceIcon=L.icon({
+iconUrl:"https://cdn-icons-png.flaticon.com/512/2967/2967350.png",
+iconSize:[40,40]
+});
 
 navigator.geolocation.getCurrentPosition(function(pos){
 
@@ -239,7 +244,7 @@ const userLoc=userMarker.getLatLng();
 
 const start=[userLoc.lat+0.01,userLoc.lng-0.01];
 
-ambulanceMarker=L.marker(start).addTo(map)
+ambulanceMarker=L.marker(start,{icon:ambulanceIcon}).addTo(map)
 .bindPopup("Ambulance");
 
 moveAmbulance(start,userLoc);
@@ -269,31 +274,6 @@ speak("Ambulance has arrived");
 },500);
 
 }
-
-/* INACTIVITY */
-
-let timer;
-
-function resetTimer(){
-
-clearTimeout(timer);
-
-timer=setTimeout(()=>{
-
-if(confirm("No response detected. Need emergency help?")){
-
-dispatchRescue();
-
-}
-
-},60000);
-
-}
-
-document.onmousemove=resetTimer;
-document.onkeypress=resetTimer;
-
-resetTimer();
 
 </script>
 
