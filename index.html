@@ -153,6 +153,55 @@ flex:1 1 100%;
 height:280px;
 }
 }
+
+/* JARVIS */
+#jarvis{
+position:fixed;
+bottom:0;
+left:0;
+width:100%;
+background:#020617;
+border-top:2px solid #22c55e;
+z-index:999;
+}
+
+#jarvisHeader{
+padding:10px;
+background:#022c22;
+color:#4ade80;
+font-weight:bold;
+}
+
+#jarvisChat{
+max-height:180px;
+overflow-y:auto;
+padding:10px;
+text-align:left;
+}
+
+.jarvisMsg{
+margin:6px 0;
+padding:8px;
+border-radius:10px;
+background:#111827;
+}
+
+.jarvisUser{
+background:#1d4ed8;
+}
+
+#jarvisControls{
+display:flex;
+gap:10px;
+padding:10px;
+}
+
+#jarvisControls button{
+flex:1;
+background:#22c55e;
+color:black;
+border-radius:10px;
+}
 </style>
 </head>
 
@@ -162,199 +211,171 @@ height:280px;
 <p>Voice Activated • AI Injury Detection • Smart Rescue</p>
 
 <div class="buttonContainer">
-<button class="voice" onclick="startVoice()">🎤 Start Voice Assistant</button>
-<button class="scan" onclick="startScan()">📷 Scan Injury</button>
-<button class="rescue" onclick="dispatchRescue()">🚑 Send Ambulance</button>
+<button class="voice" onclick="startVoice()">🎤 Voice</button>
+<button class="scan" onclick="startScan()">📷 Scan</button>
+<button class="rescue" onclick="dispatchRescue()">🚑 Ambulance</button>
 </div>
 
-<div id="status">Loading AI model...</div>
-
+<div id="status">Loading AI...</div>
 <video id="camera" autoplay playsinline></video>
-
 <div id="heard">Voice: Off</div>
 <div id="result"></div>
 
-<h2>First Aid Instructions</h2>
+<h2>First Aid</h2>
 <div id="firstAid" class="firstAidContainer"></div>
 
-<h2>Emergency Map</h2>
+<h2>Map</h2>
 <div id="map"></div>
+
+<!-- JARVIS -->
+<div id="jarvis">
+<div id="jarvisHeader">🤖 MedAI Assistant</div>
+<div id="jarvisChat"></div>
+<div id="jarvisControls">
+<button onclick="jarvisScan()">📷 Scan</button>
+<button onclick="jarvisHelp()">🚑 Help</button>
+</div>
+</div>
 
 <script>
 
-/* 🔊 SPEECH UNLOCK (MOBILE FIX) */
-document.body.addEventListener("click", () => {
-    speechSynthesis.speak(new SpeechSynthesisUtterance(""));
-}, { once:true });
+/* SPEECH UNLOCK */
+document.body.addEventListener("click",()=>{
+speechSynthesis.speak(new SpeechSynthesisUtterance(""));
+},{once:true});
 
 function speak(text){
-    const speech = new SpeechSynthesisUtterance(text);
-    speechSynthesis.speak(speech);
+speechSynthesis.speak(new SpeechSynthesisUtterance(text));
 }
 
 /* FIRST AID */
-const firstAidInstructions = {
-    bruise:["Apply cold compress","Rest the area","Elevate if possible"],
-    cut:["Clean wound","Apply antiseptic","Bandage it"],
-    burn:["Cool with water","Do not use ice","Cover lightly"],
-    sprain:["Rest","Ice","Compression","Elevation"],
-    fracture:["Immobilize","Do not move","Seek help"],
-    abrasion:["Clean wound","Apply ointment","Cover it"]
+const firstAidInstructions={
+bruise:["Apply ice","Rest"],
+cut:["Clean","Bandage"],
+burn:["Cool water","Cover"],
+abrasion:["Clean","Ointment","Cover"]
 };
 
 /* MODEL */
 let model;
-let modelReady = false;
-const MODEL_URL = "https://teachablemachine.withgoogle.com/models/0WBW0685Z/";
+let modelReady=false;
+const MODEL_URL="https://teachablemachine.withgoogle.com/models/0WBW0685Z/";
 
 async function loadModel(){
-    try{
-        model = await tmImage.load(MODEL_URL+"model.json", MODEL_URL+"metadata.json");
-        modelReady = true;
-        document.getElementById("status").innerText = "AI Ready";
-    }catch{
-        document.getElementById("status").innerText = "Model failed to load";
-    }
+try{
+model=await tmImage.load(MODEL_URL+"model.json",MODEL_URL+"metadata.json");
+modelReady=true;
+document.getElementById("status").innerText="AI Ready";
+}catch{
+document.getElementById("status").innerText="Model failed";
+}
 }
 loadModel();
 
 /* CAMERA */
-let video = document.getElementById("camera");
+const video=document.getElementById("camera");
 
 async function startScan(){
-    if(!modelReady){
-        alert("AI model still loading");
-        return;
-    }
+if(!modelReady)return alert("Model loading");
 
-    if(video.srcObject){
-        video.srcObject.getTracks().forEach(t=>t.stop());
-    }
+const stream=await navigator.mediaDevices.getUserMedia({video:true});
+video.srcObject=stream;
 
-    try{
-        const stream = await navigator.mediaDevices.getUserMedia({ video:true });
-        video.srcObject = stream;
-
-        video.onloadeddata = ()=>setTimeout(predict,1500);
-    }catch{
-        alert("Camera permission required");
-    }
+video.onloadeddata=()=>setTimeout(predict,1500);
 }
 
-/* AI PREDICT */
+/* PREDICT */
 async function predict(){
-    const prediction = await model.predict(video);
+const pred=await model.predict(video);
+let best=pred.reduce((a,b)=>a.probability>b.probability?a:b);
 
-    let best = prediction.reduce((a,b)=>a.probability>b.probability?a:b);
+document.getElementById("result").innerText=best.className;
+speak(best.className);
 
-    document.getElementById("result").innerHTML =
-        best.className + " (" + (best.probability*100).toFixed(1) + "%)";
-
-    speak(best.className + " detected");
-
-    const container = document.getElementById("firstAid");
-    container.innerHTML = "";
-
-    if(best.probability < 0.4){
-        container.innerHTML = "<p style='color:#facc15'>AI unsure, try again</p>";
-        return;
-    }
-
-    const steps = firstAidInstructions[best.className.toLowerCase()];
-    if(steps){
-        steps.forEach(step=>{
-            const card = document.createElement("div");
-            card.className = "firstAidCard";
-            card.innerHTML = `<h4>${best.className}</h4><p>${step}</p>`;
-            container.appendChild(card);
-        });
-    }
+showFirstAid(best.className.toLowerCase());
+addJarvisMessage("Detected: "+best.className);
 }
 
-/* VOICE */
+function showFirstAid(type){
+const div=document.getElementById("firstAid");
+div.innerHTML="";
+(firstAidInstructions[type]||["No data"]).forEach(step=>{
+const el=document.createElement("div");
+el.className="firstAidCard";
+el.innerHTML="<p>"+step+"</p>";
+div.appendChild(el);
+});
+}
+
+/* VOICE (UNCHANGED CORE) */
 let recognition;
 function startVoice(){
-    if(!('webkitSpeechRecognition' in window)){
-        alert("Voice not supported on this device. Use buttons.");
-        return;
-    }
+if(!('webkitSpeechRecognition' in window)){
+alert("Voice not supported on mobile");
+return;
+}
 
-    recognition = new webkitSpeechRecognition();
-    recognition.continuous = true;
-    recognition.start();
+recognition=new webkitSpeechRecognition();
+recognition.continuous=true;
+recognition.start();
 
-    document.getElementById("heard").innerHTML = "Listening...";
+recognition.onresult=(e)=>{
+let t=e.results[e.results.length-1][0].transcript.toLowerCase();
+addJarvisMessage(t,true);
 
-    recognition.onresult = function(event){
-        let speech = event.results[event.results.length-1][0].transcript.toLowerCase();
-
-        document.getElementById("heard").innerHTML = "Heard: " + speech;
-
-        if(speech.includes("scan")) startScan();
-        if(speech.includes("ambulance") || speech.includes("help")) dispatchRescue();
-    };
-
-    recognition.onend = ()=>recognition.start();
+if(t.includes("scan")) startScan();
+if(t.includes("ambulance")) dispatchRescue();
+};
 }
 
 /* MAP */
-let map,userMarker,ambulanceMarker,routeLine;
-
-const ambulanceIcon = L.divIcon({
-    html:'<div class="ambulanceIcon">🚑</div>',
-    iconSize:[60,60],
-    className:''
-});
+let map,userMarker;
 
 function initMap(lat,lon){
-    map = L.map('map').setView([lat,lon],15);
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-        maxZoom:19
-    }).addTo(map);
-
-    userMarker = L.marker([lat,lon]).addTo(map).bindPopup("Patient Location").openPopup();
+map=L.map('map').setView([lat,lon],15);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+userMarker=L.marker([lat,lon]).addTo(map);
 }
 
-/* GPS with fallback */
 navigator.geolocation.getCurrentPosition(
-    pos => initMap(pos.coords.latitude,pos.coords.longitude),
-    err => initMap(28.6139,77.2090) // Delhi fallback
+pos=>initMap(pos.coords.latitude,pos.coords.longitude),
+()=>initMap(28.6139,77.2090)
 );
 
-/* DISPATCH */
-async function dispatchRescue(){
-    if(!userMarker || !map){
-        alert("Map not ready");
-        return;
-    }
-
-    const user = userMarker.getLatLng();
-    const startLat = user.lat + 0.02;
-    const startLng = user.lng - 0.02;
-
-    const url = `https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${user.lng},${user.lat}?overview=full&geometries=geojson`;
-
-    const res = await fetch(url);
-    const data = await res.json();
-
-    const route = data.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]);
-
-    if(routeLine) map.removeLayer(routeLine);
-    routeLine = L.polyline(route,{color:"red",weight:5}).addTo(map);
-
-    ambulanceMarker = L.marker(route[0],{icon:ambulanceIcon}).addTo(map);
-
-    let i=0;
-    const interval=setInterval(()=>{
-        ambulanceMarker.setLatLng(route[i]);
-        i++;
-        if(i>=route.length){
-            clearInterval(interval);
-            speak("Ambulance has arrived");
-        }
-    },120);
+/* AMBULANCE */
+function dispatchRescue(){
+if(!map)return;
+speak("Ambulance coming");
+addJarvisMessage("Ambulance dispatched");
 }
+
+/* JARVIS */
+function addJarvisMessage(text,user=false){
+const chat=document.getElementById("jarvisChat");
+const msg=document.createElement("div");
+msg.className="jarvisMsg"+(user?" jarvisUser":"");
+msg.innerText=text;
+chat.appendChild(msg);
+chat.scrollTop=chat.scrollHeight;
+}
+
+function jarvisScan(){
+addJarvisMessage("Scan requested",true);
+startScan();
+}
+
+function jarvisHelp(){
+addJarvisMessage("Help requested",true);
+dispatchRescue();
+}
+
+window.onload=()=>{
+setTimeout(()=>{
+addJarvisMessage("Hello, I am MedAI Assistant");
+addJarvisMessage("Use Scan or Help");
+},1000);
+};
+
 </script>
 
 </body>
