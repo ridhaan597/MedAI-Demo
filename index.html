@@ -2,6 +2,8 @@
 <html>
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>MedAI Emergency Assistant</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -12,105 +14,146 @@
 
 <style>
 body{
-    font-family:Arial;
-    background:#0f172a;
-    color:white;
-    text-align:center;
-    margin:0;
-}
-header{
-    font-size:32px;
-    padding:25px;
-    font-weight:bold;
-}
-button{
-    padding:12px 20px;
-    margin:10px;
-    border:none;
-    border-radius:20px;
-    font-size:16px;
-    cursor:pointer;
-}
-.voice{background:#22c55e;color:white;}
-.scan{background:#3b82f6;color:white;}
-.rescue{background:#ef4444;color:white;}
-video{
-    margin-top:20px;
-    border-radius:12px;
-}
-#heard{
-    margin-top:15px;
-    font-size:18px;
-    color:#38bdf8;
-}
-#result{
-    margin-top:10px;
-    font-size:22px;
-}
-#status{
-    margin-top:10px;
-    color:#facc15;
-}
-#map{
-    width:90%;
-    height:450px;
-    margin:auto;
-    margin-top:40px;
-    border-radius:12px;
+font-family:Arial;
+background:#0f172a;
+color:white;
+text-align:center;
+margin:0;
+padding:10px;
 }
 
+/* HEADER */
+header{
+font-size:clamp(22px,5vw,32px);
+padding:20px;
+font-weight:bold;
+}
+
+/* BUTTON CONTAINER */
+.buttonContainer{
+display:flex;
+flex-wrap:wrap;
+justify-content:center;
+gap:10px;
+}
+
+/* BUTTONS */
+button{
+padding:12px 16px;
+border:none;
+border-radius:20px;
+font-size:14px;
+cursor:pointer;
+flex:1 1 30%;
+min-width:120px;
+}
+
+.voice{background:#22c55e;}
+.scan{background:#3b82f6;}
+.rescue{background:#ef4444;}
+
+video{
+width:100%;
+max-width:420px;
+margin-top:20px;
+border-radius:12px;
+}
+
+#heard{
+margin-top:10px;
+font-size:16px;
+color:#38bdf8;
+}
+
+#result{
+margin-top:10px;
+font-size:20px;
+}
+
+#status{
+margin-top:10px;
+color:#facc15;
+}
+
+/* FIRST AID */
 .firstAidContainer{
-    display:flex;
-    flex-wrap:wrap;
-    justify-content:center;
-    gap:20px;
-    margin-top:20px;
+display:flex;
+flex-wrap:wrap;
+justify-content:center;
+gap:15px;
+margin-top:20px;
 }
+
 .firstAidCard{
-    position: relative;
-    background: linear-gradient(145deg, #16a34a, #22c55e);
-    border-radius:14px;
-    padding:20px;
-    width:220px;
-    text-align:left;
-    box-shadow:0 0 12px rgba(34,197,94,0.3);
-    overflow: hidden;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-    cursor: default;
+position:relative;
+background:linear-gradient(145deg,#16a34a,#22c55e);
+border-radius:14px;
+padding:16px;
+width:90%;
+max-width:260px;
+text-align:left;
+box-shadow:0 0 12px rgba(34,197,94,0.3);
+overflow:hidden;
+transition:0.3s;
 }
+
 .firstAidCard h4{
-    color:white;
-    margin-bottom:10px;
+color:white;
+margin-bottom:8px;
 }
+
 .firstAidCard p{
-    color:#e0f2f1;
-    font-size:14px;
+color:#e0f2f1;
+font-size:14px;
 }
+
+/* SHINE */
 .firstAidCard::before{
-    content:'';
-    position:absolute;
-    top:0;
-    left:-75%;
-    width:50%;
-    height:100%;
-    background: linear-gradient(120deg, rgba(255,255,255,0.15), rgba(255,255,255,0.35), rgba(255,255,255,0.15));
-    transform: skewX(-25deg);
+content:'';
+position:absolute;
+top:0;
+left:-75%;
+width:50%;
+height:100%;
+background:linear-gradient(120deg,rgba(255,255,255,0.2),rgba(255,255,255,0.5),rgba(255,255,255,0.2));
+transform:skewX(-25deg);
 }
+
+.firstAidCard:hover::before,
+.firstAidCard:active::before{
+animation:shine 1s forwards;
+}
+
 .firstAidCard:hover{
-    transform:scale(1.05);
-    box-shadow:0 0 30px rgba(34,197,94,0.7);
-}
-.firstAidCard:hover::before{
-    animation:shine 1s forwards;
+transform:scale(1.05);
+box-shadow:0 0 30px rgba(34,197,94,0.7);
 }
 
 @keyframes shine{
-    0% { left: -75%; }
-    100% { left: 125%; }
+0%{left:-75%;}
+100%{left:125%;}
+}
+
+/* MAP */
+#map{
+width:100%;
+height:350px;
+margin-top:30px;
+border-radius:12px;
 }
 
 .ambulanceIcon{
-    font-size:70px;
+font-size:60px;
+}
+
+/* MOBILE */
+@media(max-width:500px){
+button{
+flex:1 1 100%;
+}
+#map{
+height:280px;
+}
 }
 </style>
 </head>
@@ -121,14 +164,16 @@ video{
 
 <p>Voice Activated • AI Injury Detection • Smart Rescue</p>
 
+<div class="buttonContainer">
 <button class="voice" onclick="startVoice()">🎤 Start Voice Assistant</button>
 <button class="scan" onclick="startScan()">📷 Scan Injury</button>
 <button class="rescue" onclick="dispatchRescue()">🚑 Send Ambulance</button>
-
-<br>
+</div>
 
 <div id="status">Loading AI model...</div>
-<video id="camera" width="320" height="240" autoplay playsinline></video>
+
+<video id="camera" autoplay playsinline></video>
+
 <div id="heard">Voice: Off</div>
 <div id="result"></div>
 
@@ -139,148 +184,99 @@ video{
 <div id="map"></div>
 
 <script>
-/* SPEAK */
 function speak(text){
-    const speech = new SpeechSynthesisUtterance(text);
-    speechSynthesis.speak(speech);
+const speech=new SpeechSynthesisUtterance(text);
+speechSynthesis.speak(speech);
 }
 
-/* FIRST AID STEPS */
-const firstAidInstructions = {
-    "bruise": ["Apply cold compress for 15-20 minutes","Rest the area","Elevate if possible","Avoid massaging injured spot"],
-    "cut": ["Clean wound with clean water","Apply antiseptic","Cover with sterile bandage","Change dressing daily"],
-    "burn": ["Cool burn with running water for 10-20 minutes","Do not apply ice","Cover with sterile gauze","Seek medical help if severe"],
-    "sprain": ["Rest injured area","Apply ice for 15 minutes every 2-3 hours","Compress with elastic bandage","Elevate above heart level"],
-    "fracture": ["Immobilize the limb","Do not try to realign bones","Apply ice to reduce swelling","Seek emergency medical attention"],
-    "abrasion": ["Rinse wound with clean water","Remove dirt with mild soap","Apply antibiotic ointment","Cover with sterile dressing"]
+/* FIRST AID */
+const firstAidInstructions={
+"bruise":["Apply cold compress","Rest area","Elevate if possible"],
+"cut":["Clean wound","Apply antiseptic","Bandage it"],
+"burn":["Cool with water","Do not use ice","Cover lightly"],
+"sprain":["Rest","Ice","Compression","Elevation"],
+"fracture":["Immobilize","Do not move","Seek help"],
+"abrasion":["Clean wound","Apply ointment","Cover it"]
 };
 
 /* MODEL */
 let model;
-let modelReady = false;
-const MODEL_URL = "https://teachablemachine.withgoogle.com/models/0WBW0685Z/";
+let modelReady=false;
+const MODEL_URL="https://teachablemachine.withgoogle.com/models/0WBW0685Z/";
 
 async function loadModel(){
-    document.getElementById("status").innerText = "Loading AI model...";
-    try{
-        const modelURL = MODEL_URL + "model.json";
-        const metadataURL = MODEL_URL + "metadata.json";
-
-        model = await tmImage.load(modelURL, metadataURL);
-
-        modelReady = true;
-        document.getElementById("status").innerText = "AI Ready";
-        console.log("Model loaded successfully");
-    } catch(error){
-        console.error("Model load error:", error);
-        document.getElementById("status").innerText = "Model failed to load";
-        alert("Model failed to load. Check console (F12).");
-    }
+try{
+model=await tmImage.load(MODEL_URL+"model.json",MODEL_URL+"metadata.json");
+modelReady=true;
+document.getElementById("status").innerText="AI Ready";
+}catch(e){
+document.getElementById("status").innerText="Model failed";
+}
 }
 loadModel();
 
 /* CAMERA */
-let video = document.getElementById("camera");
+let video=document.getElementById("camera");
 
 async function startScan(){
-    if(!modelReady){
-        alert("AI model still loading, please wait");
-        return;
-    }
+if(!modelReady) return alert("Model loading...");
 
-    try{
-        if(video.srcObject){
-            video.srcObject.getTracks().forEach(track => track.stop());
-        }
-
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        video.srcObject = stream;
-
-        video.onloadeddata = function(){
-            setTimeout(predict, 1500);
-        };
-    } catch(err){
-        console.error(err);
-        alert("Please allow camera access or use HTTPS");
-    }
+if(video.srcObject){
+video.srcObject.getTracks().forEach(t=>t.stop());
 }
 
-/* AI PREDICTION */
+const stream=await navigator.mediaDevices.getUserMedia({video:true});
+video.srcObject=stream;
+
+video.onloadeddata=()=>setTimeout(predict,1200);
+}
+
+/* PREDICT */
 async function predict(){
-    if(!modelReady) return;
+const prediction=await model.predict(video);
 
-    const prediction = await model.predict(video);
+let best=prediction.reduce((a,b)=>a.probability>b.probability?a:b);
 
-    let best = prediction[0];
-    for(let i=1; i<prediction.length; i++){
-        if(prediction[i].probability > best.probability){
-            best = prediction[i];
-        }
-    }
+document.getElementById("result").innerText=
+best.className+" ("+(best.probability*100).toFixed(1)+"%)";
 
-    const confidenceThreshold = 0.4; // only show first aid if >40% confident
-    const className = best.className.toLowerCase();
+const box=document.getElementById("firstAid");
+box.innerHTML="";
 
-    document.getElementById("result").innerHTML =
-        best.className + " (" + (best.probability*100).toFixed(1) + "%)";
-    
-    speak(best.className + " detected");
+if(best.probability<0.4){
+box.innerHTML="<p style='color:#facc15'>AI unsure, try again</p>";
+return;
+}
 
-    const firstAidDiv = document.getElementById("firstAid");
-    firstAidDiv.innerHTML = "";
-
-    if(best.probability < confidenceThreshold){
-        firstAidDiv.innerHTML = "<p style='color:#facc15'>AI unsure, try another scan.</p>";
-        return;
-    }
-
-    if(firstAidInstructions[className]){
-        firstAidInstructions[className].forEach(step=>{
-            const card = document.createElement("div");
-            card.className = "firstAidCard";
-            card.innerHTML = `<h4>${className.charAt(0).toUpperCase() + className.slice(1)}</h4><p>${step}</p>`;
-            firstAidDiv.appendChild(card);
-        });
-    } else {
-        firstAidDiv.innerHTML = "<p style='color:#facc15'>No first aid instructions for this injury.</p>";
-    }
+let steps=firstAidInstructions[best.className.toLowerCase()];
+if(steps){
+steps.forEach(s=>{
+let card=document.createElement("div");
+card.className="firstAidCard";
+card.innerHTML=`<h4>${best.className}</h4><p>${s}</p>`;
+box.appendChild(card);
+});
+}
 }
 
 /* VOICE */
 let recognition;
-async function startVoice(){
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio:true });
-        stream.getTracks().forEach(track => track.stop());
+function startVoice(){
+recognition=new webkitSpeechRecognition();
+recognition.continuous=true;
+recognition.start();
 
-        recognition = new webkitSpeechRecognition();
-        recognition.continuous = true;
-        recognition.lang = "en-US";
-        recognition.start();
-        document.getElementById("heard").innerHTML = "Listening...";
+document.getElementById("heard").innerText="Listening...";
 
-        recognition.onresult = function(event){
-            let speech = event.results[event.results.length-1][0].transcript
-                .toLowerCase().trim();
-            document.getElementById("heard").innerHTML = "Heard: " + speech;
+recognition.onresult=e=>{
+let speech=e.results[e.results.length-1][0].transcript.toLowerCase();
+document.getElementById("heard").innerText="Heard: "+speech;
 
-            if(speech.includes("scan")){
-                speak("Starting scan");
-                startScan();
-            }
+if(speech.includes("scan")) startScan();
+if(speech.includes("help")||speech.includes("ambulance")) dispatchRescue();
+};
 
-            if(speech.includes("help") || speech.includes("ambulance") || speech.includes("emergency")){
-                speak("Sending ambulance");
-                dispatchRescue();
-            }
-        };
-
-        recognition.onend = function(){ recognition.start(); };
-
-    } catch(err){
-        console.error(err);
-        alert("Microphone access denied or unavailable");
-    }
+recognition.onend=()=>recognition.start();
 }
 
 /* MAP */
@@ -289,59 +285,59 @@ let userMarker;
 let ambulanceMarker;
 let routeLine;
 
-const ambulanceIcon = L.divIcon({
-    html:'<div class="ambulanceIcon">🚑</div>',
-    iconSize:[60,60],
-    className:''
+const ambulanceIcon=L.divIcon({
+html:'<div class="ambulanceIcon">🚑</div>',
+iconSize:[60,60],
+className:''
 });
 
 navigator.geolocation.getCurrentPosition(function(pos){
-    const lat = pos.coords.latitude;
-    const lon = pos.coords.longitude;
+const lat=pos.coords.latitude;
+const lon=pos.coords.longitude;
 
-    map = L.map('map').setView([lat,lon],15);
+map=L.map('map').setView([lat,lon],15);
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-        maxZoom:19
-    }).addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+maxZoom:19
+}).addTo(map);
 
-    userMarker = L.marker([lat,lon]).addTo(map)
-        .bindPopup("Patient Location")
-        .openPopup();
+userMarker=L.marker([lat,lon]).addTo(map)
+.bindPopup("Patient Location")
+.openPopup();
 });
 
 /* DISPATCH */
 async function dispatchRescue(){
-    if(!userMarker) return;
+if(!userMarker) return;
 
-    const user = userMarker.getLatLng();
-    const startLat = user.lat + 0.02;
-    const startLng = user.lng - 0.02;
+const user=userMarker.getLatLng();
+const startLat=user.lat+0.02;
+const startLng=user.lng-0.02;
 
-    const url = `https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${user.lng},${user.lat}?overview=full&geometries=geojson`;
-    const res = await fetch(url);
-    const data = await res.json();
+const url=`https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${user.lng},${user.lat}?overview=full&geometries=geojson`;
+const res=await fetch(url);
+const data=await res.json();
 
-    const coords = data.routes[0].geometry.coordinates;
-    const route = coords.map(c => [c[1], c[0]]);
+const coords=data.routes[0].geometry.coordinates;
+const route=coords.map(c=>[c[1],c[0]]);
 
-    if(routeLine) map.removeLayer(routeLine);
-    routeLine = L.polyline(route, {color:"red",weight:5}).addTo(map);
+if(routeLine) map.removeLayer(routeLine);
+routeLine=L.polyline(route,{color:"red",weight:5}).addTo(map);
 
-    ambulanceMarker = L.marker(route[0], {icon:ambulanceIcon}).addTo(map);
-    moveAmbulance(route);
+ambulanceMarker=L.marker(route[0],{icon:ambulanceIcon}).addTo(map);
+moveAmbulance(route);
 }
 
 function moveAmbulance(route){
-    let i = 0;
-    const interval = setInterval(()=>{
-        ambulanceMarker.setLatLng(route[i]);
-        i++;
-        if(i >= route.length){
-            clearInterval(interval);
-            speak("Ambulance has arrived");
-        }
-    },120);
+let i=0;
+const interval=setInterval(()=>{
+ambulanceMarker.setLatLng(route[i]);
+i++;
+if(i>=route.length){
+clearInterval(interval);
+speak("Ambulance has arrived");
+}
+},120);
 }
 </script>
 
