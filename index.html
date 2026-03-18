@@ -179,10 +179,32 @@ border-radius:50%;
 z-index:10000;
 cursor:pointer;
 }
+
+/* ✅ NEW DISCLAIMER STYLES */
+#topDisclaimer{
+background:#020617;
+border-bottom:2px solid #22c55e;
+padding:12px;
+font-size:14px;
+line-height:1.5;
+color:#e5e7eb;
+}
+
+#aiWarning{
+margin-top:10px;
+font-size:16px;
+color:#facc15;
+font-weight:bold;
+}
 </style>
 </head>
 
 <body>
+
+<!-- ✅ TOP DISCLAIMER -->
+<div id="topDisclaimer">
+⚠️ MedAI is made by class 10 students. This is first aid guidance only, not medical diagnosis. Call emergency for serious injuries. Trust AI at your own risk.
+</div>
 
 <header>MedAI Emergency Assistant</header>
 <p>AI Injury Detection • Voice • Emergency Response</p>
@@ -199,6 +221,10 @@ cursor:pointer;
 <div id="result"></div>
 
 <h2>First Aid Instructions</h2>
+
+<!-- ✅ AI WARNING WILL APPEAR HERE -->
+<div id="aiWarning"></div>
+
 <div id="firstAid" class="firstAidContainer"></div>
 
 <h2>Emergency Map</h2>
@@ -266,6 +292,9 @@ let best=pred.reduce((a,b)=>a.probability>b.probability?a:b);
 
 document.getElementById("result").innerText=
 best.className+" ("+(best.probability*100).toFixed(1)+"%)";
+
+/* ✅ SHOW WARNING ABOVE FIRST AID */
+document.getElementById("aiWarning").innerText="⚠️ AI can make mistakes";
 
 showFirstAid(best.className.toLowerCase());
 speak(best.className);
@@ -350,7 +379,6 @@ window.ambulanceMarker=L.marker(start,{icon:ambulanceIcon}).addTo(map);
 
 let route=[];
 
-/* TRY REAL ROADS */
 try{
 const url=`https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${user.lng},${user.lat}?overview=full&geometries=geojson`;
 const res=await fetch(url);
@@ -361,20 +389,10 @@ route=data.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]);
 }
 }catch{}
 
-/* FALLBACK */
 if(route.length===0){
-route=[
-start,
-[user.lat+0.009,user.lng-0.009],
-[user.lat+0.007,user.lng-0.007],
-[user.lat+0.005,user.lng-0.005],
-[user.lat+0.003,user.lng-0.003],
-[user.lat+0.001,user.lng-0.001],
-[user.lat,user.lng]
-];
+route=[start,[user.lat,user.lng]];
 }
 
-/* SMOOTH SPEED */
 let i=0;
 const interval=setInterval(()=>{
 if(i>=route.length){
@@ -385,7 +403,7 @@ return;
 }
 window.ambulanceMarker.setLatLng(route[i]);
 i++;
-},220);
+},120);
 }
 
 /* JARVIS */
@@ -415,18 +433,6 @@ document.getElementById("jarvis").classList.toggle("hidden");
 window.onload=()=>{
 addJarvisMessage("Hello, I am MedAI Assistant");
 };
-
-/* ========================= */
-/* ✅ APPENDED FIXES ONLY */
-/* ========================= */
-
-/* Ensure Jarvis ALWAYS above map */
-document.getElementById("jarvis").style.zIndex = "99999";
-
-/* Fix speech on mobile (resume if paused) */
-setInterval(()=>{
-if(speechSynthesis.paused) speechSynthesis.resume();
-},2000);
 
 </script>
 
