@@ -365,9 +365,11 @@ route=data.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]);
 if(route.length===0){
 route=[
 start,
+[user.lat+0.009,user.lng-0.009],
 [user.lat+0.007,user.lng-0.007],
-[user.lat+0.004,user.lng-0.004],
-[user.lat+0.002,user.lng-0.002],
+[user.lat+0.005,user.lng-0.005],
+[user.lat+0.003,user.lng-0.003],
+[user.lat+0.001,user.lng-0.001],
 [user.lat,user.lng]
 ];
 }
@@ -383,7 +385,7 @@ return;
 }
 window.ambulanceMarker.setLatLng(route[i]);
 i++;
-},120);
+},220);
 }
 
 /* JARVIS */
@@ -413,6 +415,18 @@ document.getElementById("jarvis").classList.toggle("hidden");
 window.onload=()=>{
 addJarvisMessage("Hello, I am MedAI Assistant");
 };
+
+/* ========================= */
+/* ✅ APPENDED FIXES ONLY */
+/* ========================= */
+
+/* Ensure Jarvis ALWAYS above map */
+document.getElementById("jarvis").style.zIndex = "99999";
+
+/* Fix speech on mobile (resume if paused) */
+setInterval(()=>{
+if(speechSynthesis.paused) speechSynthesis.resume();
+},2000);
 
 </script>
 
