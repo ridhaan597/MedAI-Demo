@@ -180,7 +180,7 @@ z-index:10000;
 cursor:pointer;
 }
 
-/* ✅ NEW DISCLAIMER STYLES */
+/* DISCLAIMER */
 #topDisclaimer{
 background:#020617;
 border-bottom:2px solid #22c55e;
@@ -201,7 +201,6 @@ font-weight:bold;
 
 <body>
 
-<!-- ✅ TOP DISCLAIMER -->
 <div id="topDisclaimer">
 ⚠️ MedAI is made by class 10 students. This is first aid guidance only, not medical diagnosis. Call emergency for serious injuries. Trust AI at your own risk.
 </div>
@@ -221,10 +220,7 @@ font-weight:bold;
 <div id="result"></div>
 
 <h2>First Aid Instructions</h2>
-
-<!-- ✅ AI WARNING WILL APPEAR HERE -->
 <div id="aiWarning"></div>
-
 <div id="firstAid" class="firstAidContainer"></div>
 
 <h2>Emergency Map</h2>
@@ -293,7 +289,6 @@ let best=pred.reduce((a,b)=>a.probability>b.probability?a:b);
 document.getElementById("result").innerText=
 best.className+" ("+(best.probability*100).toFixed(1)+"%)";
 
-/* ✅ SHOW WARNING ABOVE FIRST AID */
 document.getElementById("aiWarning").innerText="⚠️ AI can make mistakes";
 
 showFirstAid(best.className.toLowerCase());
@@ -353,17 +348,12 @@ pos=>initMap(pos.coords.latitude,pos.coords.longitude),
 ()=>initMap(28.6139,77.2090)
 );
 
-/* 🚑 REALISTIC AMBULANCE */
+/* 🚑 AMBULANCE */
 async function dispatchRescue(){
 if(!map||!userMarker)return;
 
-speak("Ambulance on the way");
-addJarvisMessage("🚑 Ambulance dispatched");
-
 const user=userMarker.getLatLng();
 const start=[user.lat+0.01,user.lng-0.01];
-
-map.fitBounds([start,user],{padding:[50,50]});
 
 const ambulanceIcon=L.divIcon({
 html:"<div style='font-size:30px'>🚑</div>",
@@ -371,34 +361,15 @@ iconSize:[30,30],
 className:""
 });
 
-if(window.ambulanceMarker){
-map.removeLayer(window.ambulanceMarker);
-}
-
 window.ambulanceMarker=L.marker(start,{icon:ambulanceIcon}).addTo(map);
 
-let route=[];
-
-try{
-const url=`https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${user.lng},${user.lat}?overview=full&geometries=geojson`;
-const res=await fetch(url);
-const data=await res.json();
-
-if(data.routes && data.routes.length>0){
-route=data.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]);
-}
-}catch{}
-
-if(route.length===0){
-route=[start,[user.lat,user.lng]];
-}
+let route=[start,[user.lat,user.lng]];
 
 let i=0;
 const interval=setInterval(()=>{
 if(i>=route.length){
 clearInterval(interval);
 speak("Ambulance arrived");
-addJarvisMessage("✅ Arrived");
 return;
 }
 window.ambulanceMarker.setLatLng(route[i]);
@@ -416,16 +387,8 @@ chat.appendChild(msg);
 chat.scrollTop=chat.scrollHeight;
 }
 
-function jarvisScan(){
-addJarvisMessage("Scan requested",true);
-startScan();
-}
-
-function jarvisHelp(){
-addJarvisMessage("Help requested",true);
-dispatchRescue();
-}
-
+function jarvisScan(){startScan();}
+function jarvisHelp(){dispatchRescue();}
 function toggleJarvis(){
 document.getElementById("jarvis").classList.toggle("hidden");
 }
@@ -433,6 +396,63 @@ document.getElementById("jarvis").classList.toggle("hidden");
 window.onload=()=>{
 addJarvisMessage("Hello, I am MedAI Assistant");
 };
+
+/* ========================= */
+/* 🔁 CAMERA FLIP ADDON */
+/* ========================= */
+
+let currentFacingMode = "environment";
+
+/* Detect mobile */
+const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+if(isMobile){
+
+const flipBtn = document.createElement("button");
+flipBtn.innerText = "🔄 Flip Camera";
+flipBtn.style.background = "#6366f1";
+flipBtn.style.color = "white";
+
+document.querySelector(".buttonContainer").appendChild(flipBtn);
+
+flipBtn.onclick = async function(){
+
+currentFacingMode = currentFacingMode === "user" ? "environment" : "user";
+
+if(video.srcObject){
+video.srcObject.getTracks().forEach(t=>t.stop());
+}
+
+const stream = await navigator.mediaDevices.getUserMedia({
+video:{facingMode:currentFacingMode}
+});
+
+video.srcObject = stream;
+speak("Camera flipped");
+};
+
+/* Override scan safely */
+const oldScan = startScan;
+startScan = async function(){
+
+if(!modelReady){
+oldScan();
+return;
+}
+
+if(video.srcObject){
+video.srcObject.getTracks().forEach(t=>t.stop());
+}
+
+const stream = await navigator.mediaDevices.getUserMedia({
+video:{facingMode:currentFacingMode}
+});
+
+video.srcObject = stream;
+video.onloadeddata=()=>setTimeout(predict,1500);
+};
+
+}
 
 </script>
 
