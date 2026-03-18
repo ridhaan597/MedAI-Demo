@@ -28,6 +28,7 @@ padding:25px;
 font-weight:bold;
 }
 
+/* BUTTONS */
 .buttonContainer{
 display:flex;
 flex-wrap:wrap;
@@ -37,7 +38,6 @@ gap:10px;
 
 button{
 padding:12px 20px;
-margin:10px;
 border:none;
 border-radius:20px;
 font-size:16px;
@@ -46,9 +46,9 @@ flex:1 1 30%;
 min-width:120px;
 }
 
-.voice{background:#22c55e;color:white;}
-.scan{background:#3b82f6;color:white;}
-.rescue{background:#ef4444;color:white;}
+.voice{background:#22c55e;}
+.scan{background:#3b82f6;}
+.rescue{background:#ef4444;}
 
 video{
 width:100%;
@@ -73,6 +73,7 @@ margin-top:10px;
 color:#facc15;
 }
 
+/* MAP */
 #map{
 width:100%;
 height:350px;
@@ -85,7 +86,7 @@ border-radius:12px;
 font-size:70px;
 }
 
-/* FIRST AID */
+/* FIRST AID CARDS */
 .firstAidContainer{
 display:flex;
 flex-wrap:wrap;
@@ -143,7 +144,7 @@ box-shadow:0 0 30px rgba(34,197,94,0.7);
 100%{left:125%;}
 }
 
-/* MOBILE FIX */
+/* MOBILE */
 @media(max-width:500px){
 button{
 flex:1 1 100%;
@@ -158,7 +159,6 @@ height:280px;
 <body>
 
 <header>MedAI Emergency Assistant</header>
-
 <p>Voice Activated • AI Injury Detection • Smart Rescue</p>
 
 <div class="buttonContainer">
@@ -166,8 +166,6 @@ height:280px;
 <button class="scan" onclick="startScan()">📷 Scan Injury</button>
 <button class="rescue" onclick="dispatchRescue()">🚑 Send Ambulance</button>
 </div>
-
-<br>
 
 <div id="status">Loading AI model...</div>
 
@@ -183,7 +181,12 @@ height:280px;
 <div id="map"></div>
 
 <script>
-/* SPEAK */
+
+/* 🔊 SPEECH UNLOCK (MOBILE FIX) */
+document.body.addEventListener("click", () => {
+    speechSynthesis.speak(new SpeechSynthesisUtterance(""));
+}, { once:true });
+
 function speak(text){
     const speech = new SpeechSynthesisUtterance(text);
     speechSynthesis.speak(speech);
@@ -191,12 +194,12 @@ function speak(text){
 
 /* FIRST AID */
 const firstAidInstructions = {
-    "bruise": ["Apply cold compress","Rest the area","Elevate if possible"],
-    "cut": ["Clean wound","Apply antiseptic","Bandage it"],
-    "burn": ["Cool with water","Do not use ice","Cover lightly"],
-    "sprain": ["Rest","Ice","Compression","Elevation"],
-    "fracture": ["Immobilize","Do not move","Seek help"],
-    "abrasion": ["Clean wound","Apply ointment","Cover it"]
+    bruise:["Apply cold compress","Rest the area","Elevate if possible"],
+    cut:["Clean wound","Apply antiseptic","Bandage it"],
+    burn:["Cool with water","Do not use ice","Cover lightly"],
+    sprain:["Rest","Ice","Compression","Elevation"],
+    fracture:["Immobilize","Do not move","Seek help"],
+    abrasion:["Clean wound","Apply ointment","Cover it"]
 };
 
 /* MODEL */
@@ -205,16 +208,11 @@ let modelReady = false;
 const MODEL_URL = "https://teachablemachine.withgoogle.com/models/0WBW0685Z/";
 
 async function loadModel(){
-    document.getElementById("status").innerText = "Loading AI model...";
     try{
-        const modelURL = MODEL_URL + "model.json";
-        const metadataURL = MODEL_URL + "metadata.json";
-
-        model = await tmImage.load(modelURL, metadataURL);
-
+        model = await tmImage.load(MODEL_URL+"model.json", MODEL_URL+"metadata.json");
         modelReady = true;
         document.getElementById("status").innerText = "AI Ready";
-    } catch(error){
+    }catch{
         document.getElementById("status").innerText = "Model failed to load";
     }
 }
@@ -225,52 +223,50 @@ let video = document.getElementById("camera");
 
 async function startScan(){
     if(!modelReady){
-        alert("AI model still loading, please wait");
+        alert("AI model still loading");
         return;
     }
 
     if(video.srcObject){
-        video.srcObject.getTracks().forEach(track => track.stop());
+        video.srcObject.getTracks().forEach(t=>t.stop());
     }
 
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-    video.srcObject = stream;
+    try{
+        const stream = await navigator.mediaDevices.getUserMedia({ video:true });
+        video.srcObject = stream;
 
-    video.onloadeddata = function(){
-        setTimeout(predict, 1500);
-    };
+        video.onloadeddata = ()=>setTimeout(predict,1500);
+    }catch{
+        alert("Camera permission required");
+    }
 }
 
-/* AI PREDICTION */
+/* AI PREDICT */
 async function predict(){
     const prediction = await model.predict(video);
 
-    let best = prediction[0];
-    for(let i=1; i<prediction.length; i++){
-        if(prediction[i].probability > best.probability){
-            best = prediction[i];
-        }
-    }
+    let best = prediction.reduce((a,b)=>a.probability>b.probability?a:b);
 
     document.getElementById("result").innerHTML =
         best.className + " (" + (best.probability*100).toFixed(1) + "%)";
-    
+
     speak(best.className + " detected");
 
-    const firstAidDiv = document.getElementById("firstAid");
-    firstAidDiv.innerHTML = "";
+    const container = document.getElementById("firstAid");
+    container.innerHTML = "";
 
     if(best.probability < 0.4){
-        firstAidDiv.innerHTML = "<p style='color:#facc15'>AI unsure, try again.</p>";
+        container.innerHTML = "<p style='color:#facc15'>AI unsure, try again</p>";
         return;
     }
 
-    if(firstAidInstructions[best.className.toLowerCase()]){
-        firstAidInstructions[best.className.toLowerCase()].forEach(step=>{
+    const steps = firstAidInstructions[best.className.toLowerCase()];
+    if(steps){
+        steps.forEach(step=>{
             const card = document.createElement("div");
             card.className = "firstAidCard";
             card.innerHTML = `<h4>${best.className}</h4><p>${step}</p>`;
-            firstAidDiv.appendChild(card);
+            container.appendChild(card);
         });
     }
 }
@@ -278,35 +274,31 @@ async function predict(){
 /* VOICE */
 let recognition;
 function startVoice(){
+    if(!('webkitSpeechRecognition' in window)){
+        alert("Voice not supported on this device. Use buttons.");
+        return;
+    }
+
     recognition = new webkitSpeechRecognition();
     recognition.continuous = true;
-    recognition.lang = "en-US";
     recognition.start();
 
     document.getElementById("heard").innerHTML = "Listening...";
 
     recognition.onresult = function(event){
-        let speech = event.results[event.results.length-1][0].transcript
-            .toLowerCase().trim();
+        let speech = event.results[event.results.length-1][0].transcript.toLowerCase();
+
         document.getElementById("heard").innerHTML = "Heard: " + speech;
 
-        if(speech.includes("scan")){
-            startScan();
-        }
-
-        if(speech.includes("help") || speech.includes("ambulance")){
-            dispatchRescue();
-        }
+        if(speech.includes("scan")) startScan();
+        if(speech.includes("ambulance") || speech.includes("help")) dispatchRescue();
     };
 
-    recognition.onend = function(){ recognition.start(); };
+    recognition.onend = ()=>recognition.start();
 }
 
 /* MAP */
-let map;
-let userMarker;
-let ambulanceMarker;
-let routeLine;
+let map,userMarker,ambulanceMarker,routeLine;
 
 const ambulanceIcon = L.divIcon({
     html:'<div class="ambulanceIcon">🚑</div>',
@@ -314,49 +306,50 @@ const ambulanceIcon = L.divIcon({
     className:''
 });
 
-navigator.geolocation.getCurrentPosition(function(pos){
-    const lat = pos.coords.latitude;
-    const lon = pos.coords.longitude;
-
+function initMap(lat,lon){
     map = L.map('map').setView([lat,lon],15);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
         maxZoom:19
     }).addTo(map);
 
-    userMarker = L.marker([lat,lon]).addTo(map)
-        .bindPopup("Patient Location")
-        .openPopup();
-});
+    userMarker = L.marker([lat,lon]).addTo(map).bindPopup("Patient Location").openPopup();
+}
+
+/* GPS with fallback */
+navigator.geolocation.getCurrentPosition(
+    pos => initMap(pos.coords.latitude,pos.coords.longitude),
+    err => initMap(28.6139,77.2090) // Delhi fallback
+);
 
 /* DISPATCH */
 async function dispatchRescue(){
-    if(!userMarker) return;
+    if(!userMarker || !map){
+        alert("Map not ready");
+        return;
+    }
 
     const user = userMarker.getLatLng();
     const startLat = user.lat + 0.02;
     const startLng = user.lng - 0.02;
 
     const url = `https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${user.lng},${user.lat}?overview=full&geometries=geojson`;
+
     const res = await fetch(url);
     const data = await res.json();
 
-    const coords = data.routes[0].geometry.coordinates;
-    const route = coords.map(c => [c[1], c[0]]);
+    const route = data.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]);
 
     if(routeLine) map.removeLayer(routeLine);
-    routeLine = L.polyline(route, {color:"red",weight:5}).addTo(map);
+    routeLine = L.polyline(route,{color:"red",weight:5}).addTo(map);
 
-    ambulanceMarker = L.marker(route[0], {icon:ambulanceIcon}).addTo(map);
-    moveAmbulance(route);
-}
+    ambulanceMarker = L.marker(route[0],{icon:ambulanceIcon}).addTo(map);
 
-function moveAmbulance(route){
-    let i = 0;
-    const interval = setInterval(()=>{
+    let i=0;
+    const interval=setInterval(()=>{
         ambulanceMarker.setLatLng(route[i]);
         i++;
-        if(i >= route.length){
+        if(i>=route.length){
             clearInterval(interval);
             speak("Ambulance has arrived");
         }
