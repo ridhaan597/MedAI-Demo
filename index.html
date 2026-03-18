@@ -56,6 +56,29 @@ margin-top:20px;
 border-radius:12px;
 }
 
+/* 🔄 camera wrapper */
+#cameraWrapper{
+position:relative;
+display:inline-block;
+}
+
+/* 🔄 flip button overlay */
+#flipOverlayBtn{
+position:absolute;
+bottom:15px;
+right:15px;
+background:rgba(0,0,0,0.6);
+color:white;
+border:none;
+padding:10px 14px;
+border-radius:20px;
+font-size:14px;
+cursor:pointer;
+z-index:10;
+backdrop-filter:blur(6px);
+display:none;
+}
+
 #heard{
 margin-top:15px;
 font-size:18px;
@@ -214,7 +237,11 @@ font-weight:bold;
 <button class="rescue" onclick="dispatchRescue()">🚑 Ambulance</button>
 </div>
 
+<!-- ✅ ONLY CHANGE: wrapped video -->
+<div id="cameraWrapper">
 <video id="camera" autoplay playsinline></video>
+<button id="flipOverlayBtn">🔄 Flip</button>
+</div>
 
 <div id="heard">Voice: Off</div>
 <div id="result"></div>
@@ -271,15 +298,38 @@ loadModel();
 
 /* CAMERA */
 const video=document.getElementById("camera");
+const flipBtn=document.getElementById("flipOverlayBtn");
+let currentFacingMode="environment";
+const isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
 async function startScan(){
 if(!modelReady)return alert("Model loading");
 
-const stream=await navigator.mediaDevices.getUserMedia({video:true});
+const stream=await navigator.mediaDevices.getUserMedia({
+video:{facingMode:currentFacingMode}
+});
 video.srcObject=stream;
+
+if(isMobile) flipBtn.style.display="block";
 
 video.onloadeddata=()=>setTimeout(predict,1500);
 }
+
+/* 🔄 FLIP */
+flipBtn.onclick=async()=>{
+currentFacingMode=currentFacingMode==="user"?"environment":"user";
+
+if(video.srcObject){
+video.srcObject.getTracks().forEach(t=>t.stop());
+}
+
+const stream=await navigator.mediaDevices.getUserMedia({
+video:{facingMode:currentFacingMode}
+});
+
+video.srcObject=stream;
+speak("Camera flipped");
+};
 
 /* PREDICT */
 async function predict(){
@@ -396,63 +446,6 @@ document.getElementById("jarvis").classList.toggle("hidden");
 window.onload=()=>{
 addJarvisMessage("Hello, I am MedAI Assistant");
 };
-
-/* ========================= */
-/* 🔁 CAMERA FLIP ADDON */
-/* ========================= */
-
-let currentFacingMode = "environment";
-
-/* Detect mobile */
-const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-if(isMobile){
-
-const flipBtn = document.createElement("button");
-flipBtn.innerText = "🔄 Flip Camera";
-flipBtn.style.background = "#6366f1";
-flipBtn.style.color = "white";
-
-document.querySelector(".buttonContainer").appendChild(flipBtn);
-
-flipBtn.onclick = async function(){
-
-currentFacingMode = currentFacingMode === "user" ? "environment" : "user";
-
-if(video.srcObject){
-video.srcObject.getTracks().forEach(t=>t.stop());
-}
-
-const stream = await navigator.mediaDevices.getUserMedia({
-video:{facingMode:currentFacingMode}
-});
-
-video.srcObject = stream;
-speak("Camera flipped");
-};
-
-/* Override scan safely */
-const oldScan = startScan;
-startScan = async function(){
-
-if(!modelReady){
-oldScan();
-return;
-}
-
-if(video.srcObject){
-video.srcObject.getTracks().forEach(t=>t.stop());
-}
-
-const stream = await navigator.mediaDevices.getUserMedia({
-video:{facingMode:currentFacingMode}
-});
-
-video.srcObject = stream;
-video.onloadeddata=()=>setTimeout(predict,1500);
-};
-
-}
 
 </script>
 
