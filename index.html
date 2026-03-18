@@ -447,99 +447,84 @@ window.onload=()=>{
 addJarvisMessage("Hello, I am MedAI Assistant");
 };
 /* ===================================== */
-/* 🚑 FINAL SAFE AMBULANCE PATCH */
+/* 🚑 FINAL FIXED AMBULANCE MOVEMENT */
 /* ===================================== */
 
 let sirenFix = new Audio("https://www.soundjay.com/misc/sounds/ambulance-siren-01.mp3");
 sirenFix.loop = true;
 
-/* smoother + slower fallback */
 function slowFallbackRoute(start,user){
-let route=[];
-let steps=160;
-
-for(let i=0;i<=steps;i++){
-let lat=start[0]+(user.lat-start[0])*(i/steps);
-let lng=start[1]+(user.lng-start[1])*(i/steps);
-lat+=Math.sin(i/steps*Math.PI)*0.002;
-route.push([lat,lng]);
-}
-return route;
+    let route=[];
+    let steps=300; // longer for smoother/slower
+    for(let i=0;i<=steps;i++){
+        let lat=start[0]+(user.lat-start[0])*(i/steps);
+        let lng=start[1]+(user.lng-start[1])*(i/steps);
+        route.push([lat,lng]);
+    }
+    return route;
 }
 
-/* preserve EVERYTHING before this */
 const dispatchRescue_original = dispatchRescue;
 
 dispatchRescue = async function(){
+    if(!map || !userMarker){
+        dispatchRescue_original();
+        return;
+    }
 
-if(!map || !userMarker){
-dispatchRescue_original();
-return;
-}
+    const user=userMarker.getLatLng();
 
-const user=userMarker.getLatLng();
+    /* spawn farther so it doesn't instantly appear */
+    const start=[user.lat+0.035,user.lng-0.035];
 
-/* spawn farther so it doesn't instantly appear */
-const start=[user.lat+0.035,user.lng-0.035];
+    /* remove previous ambulance safely */
+    if(window.ambulanceMarker) map.removeLayer(window.ambulanceMarker);
 
-/* remove previous ambulance safely */
-if(window.ambulanceMarker) map.removeLayer(window.ambulanceMarker);
+    /* emoji ambulance */
+    const icon=L.divIcon({
+        html:"<div style='font-size:34px'>🚑</div>",
+        className:""
+    });
 
-/* emoji ambulance */
-const icon=L.divIcon({
-html:"<div style='font-size:34px'>🚑</div>",
-className:""
-});
+    window.ambulanceMarker=L.marker(start,{icon}).addTo(map);
 
-window.ambulanceMarker=L.marker(start,{icon}).addTo(map);
+    /* siren */
+    sirenFix.currentTime=0;
+    sirenFix.play().catch(()=>{});
 
-/* siren */
-sirenFix.currentTime=0;
-sirenFix.play().catch(()=>{});
+    speak("Ambulance on the way");
 
-speak("Ambulance on the way");
+    /* try real route */
+    let route=[];
+    try{
+        let res=await fetch(`https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${user.lng},${user.lat}?overview=full&geometries=geojson`);
+        let data=await res.json();
+        if(data.routes && data.routes.length>0){
+            route=data.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]);
+        }
+    }catch{}
 
-/* try real route */
-let route=[];
-try{
-let res=await fetch(`https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${user.lng},${user.lat}?overview=full&geometries=geojson`);
-let data=await res.json();
-route=data.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]);
-}catch{}
+    /* fallback if needed */
+    if(!route.length){
+        route=slowFallbackRoute(start,user);
+    }
 
-/* fallback if needed */
-if(!route.length){
-route=slowFallbackRoute(start,user);
-}
-
-/* slower movement */
-let i=0;
-let speed=200;
-
-let move=setInterval(()=>{
-
-if(i>=route.length){
-clearInterval(move);
-
-/* stop siren */
-sirenFix.pause();
-
-/* final message */
-speak("Ambulance has arrived");
-
-/* optional jarvis message (only if exists) */
-if(typeof addJarvisMessage==="function"){
-addJarvisMessage("🚑 Ambulance has arrived");
-}
-
-return;
-}
-
-window.ambulanceMarker.setLatLng(route[i]);
-i++;
-
-},speed);
-
+    /* smooth movement */
+    let i=0;
+    const speed=150; // ms per step
+    const move=setInterval(()=>{
+        if(i>=route.length){
+            clearInterval(move);
+            sirenFix.pause();
+            speak("Ambulance has arrived");
+            if(typeof addJarvisMessage==="function"){
+                addJarvisMessage("🚑 Ambulance has arrived");
+            }
+            return;
+        }
+        window.ambulanceMarker.setLatLng(route[i]);
+        i++;
+    },speed);
 };
 </script>
 
