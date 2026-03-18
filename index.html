@@ -447,225 +447,98 @@ window.onload=()=>{
 addJarvisMessage("Hello, I am MedAI Assistant");
 };
 /* ===================================== */
-/* 🚑 FINAL INSANE AMBULANCE UPGRADE */
+/* 🚑 FINAL SAFE AMBULANCE PATCH */
 /* ===================================== */
 
-/* 🔊 siren */
-let siren = new Audio("https://www.soundjay.com/misc/sounds/ambulance-siren-01.mp3");
-siren.loop = true;
+let sirenFix = new Audio("https://www.soundjay.com/misc/sounds/ambulance-siren-01.mp3");
+sirenFix.loop = true;
 
-/* distance calc */
-function calcDist(a,b){
-const R=6371;
-const dLat=(b.lat-a.lat)*Math.PI/180;
-const dLon=(b.lng-a.lng)*Math.PI/180;
-
-const lat1=a.lat*Math.PI/180;
-const lat2=b.lat*Math.PI/180;
-
-const x=Math.sin(dLat/2)**2 +
-Math.sin(dLon/2)**2*Math.cos(lat1)*Math.cos(lat2);
-
-return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
-}
-
-/* hospitals */
-function getHospitals(user){
-return [
-[user.lat+0.01,user.lng+0.005],
-[user.lat-0.008,user.lng+0.006],
-[user.lat+0.006,user.lng-0.009]
-];
-}
-
-/* ambulances */
-function getAmbulances(user){
-return [
-[user.lat+0.02,user.lng-0.01],
-[user.lat-0.015,user.lng+0.012],
-[user.lat+0.01,user.lng+0.02]
-];
-}
-
-/* ETA UI */
-function showETA(text){
-let box=document.getElementById("etaBox");
-
-if(!box){
-box=document.createElement("div");
-box.id="etaBox";
-box.style.marginTop="10px";
-box.style.fontSize="18px";
-box.style.color="#22c55e";
-box.style.fontWeight="bold";
-document.body.insertBefore(box,document.getElementById("map"));
-}
-
-box.innerText=text;
-}
-
-/* route */
-async function getRoute(start,user){
-try{
-const url=`https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${user.lng},${user.lat}?overview=full&geometries=geojson`;
-const res=await fetch(url);
-const data=await res.json();
-
-if(data.routes && data.routes.length>0){
-return data.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]);
-}
-}catch{}
-return [];
-}
-
-/* fallback */
-function fallbackRoute(start,user){
+/* smoother + slower fallback */
+function slowFallbackRoute(start,user){
 let route=[];
-let steps=80;
+let steps=160;
 
 for(let i=0;i<=steps;i++){
 let lat=start[0]+(user.lat-start[0])*(i/steps);
 let lng=start[1]+(user.lng-start[1])*(i/steps);
-
-/* curve */
 lat+=Math.sin(i/steps*Math.PI)*0.002;
-
 route.push([lat,lng]);
 }
 return route;
 }
 
-/* traffic */
-function trafficFactor(){
-return Math.random()<0.3 ? 2 : 1;
-}
-
-/* 🔁 SAFE OVERRIDE (keeps your original as fallback) */
-const originalDispatch = dispatchRescue;
+/* preserve EVERYTHING before this */
+const dispatchRescue_original = dispatchRescue;
 
 dispatchRescue = async function(){
 
-if(!map||!userMarker){
-originalDispatch();
+if(!map || !userMarker){
+dispatchRescue_original();
 return;
 }
-
-speak("Ambulance on the way");
-addJarvisMessage("🚑 Ambulance dispatched");
 
 const user=userMarker.getLatLng();
 
-/* spawn ambulances */
-let ambulances=getAmbulances(user);
+/* spawn farther so it doesn't instantly appear */
+const start=[user.lat+0.035,user.lng-0.035];
 
-/* pick nearest */
-let nearest=ambulances[0];
-let minDist=Infinity;
-
-ambulances.forEach(a=>{
-let d=calcDist({lat:a[0],lng:a[1]},user);
-if(d<minDist){
-minDist=d;
-nearest=a;
-}
-});
-
-/* cleanup */
+/* remove previous ambulance safely */
 if(window.ambulanceMarker) map.removeLayer(window.ambulanceMarker);
-if(window.routeLine) map.removeLayer(window.routeLine);
 
-/* marker */
+/* emoji ambulance */
 const icon=L.divIcon({
-html:"<div style='font-size:30px'>🚑</div>",
-iconSize:[30,30],
+html:"<div style='font-size:34px'>🚑</div>",
 className:""
 });
 
-window.ambulanceMarker=L.marker(nearest,{icon}).addTo(map);
+window.ambulanceMarker=L.marker(start,{icon}).addTo(map);
 
 /* siren */
-siren.play().catch(()=>{});
+sirenFix.currentTime=0;
+sirenFix.play().catch(()=>{});
 
-/* route to user */
-let route=await getRoute(nearest,user);
-if(route.length===0) route=fallbackRoute(nearest,user);
+speak("Ambulance on the way");
 
-/* draw */
-window.routeLine=L.polyline(route,{color:"#22c55e",weight:4}).addTo(map);
+/* try real route */
+let route=[];
+try{
+let res=await fetch(`https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${user.lng},${user.lat}?overview=full&geometries=geojson`);
+let data=await res.json();
+route=data.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]);
+}catch{}
 
-/* ETA */
-let dist=calcDist({lat:nearest[0],lng:nearest[1]},user);
-let eta=Math.max(1,Math.round((dist/40)*60));
-showETA("🚑 Arriving in "+eta+" min");
+/* fallback if needed */
+if(!route.length){
+route=slowFallbackRoute(start,user);
+}
 
-/* move */
+/* slower movement */
 let i=0;
-let total=route.length;
+let speed=200;
 
-let interval=setInterval(()=>{
+let move=setInterval(()=>{
 
 if(i>=route.length){
-clearInterval(interval);
+clearInterval(move);
 
-/* pickup */
-showETA("🚑 Picking patient...");
+/* stop siren */
+sirenFix.pause();
 
-/* go hospital */
-setTimeout(async ()=>{
+/* final message */
+speak("Ambulance has arrived");
 
-let hospitals=getHospitals(user);
-
-let hospital=hospitals[0];
-let minH=Infinity;
-
-hospitals.forEach(h=>{
-let d=calcDist({lat:user.lat,lng:user.lng},{lat:h[0],lng:h[1]});
-if(d<minH){
-minH=d;
-hospital=h;
+/* optional jarvis message (only if exists) */
+if(typeof addJarvisMessage==="function"){
+addJarvisMessage("🚑 Ambulance has arrived");
 }
-});
-
-/* route 2 */
-let route2=await getRoute([user.lat,user.lng],{lat:hospital[0],lng:hospital[1]});
-if(route2.length===0) route2=fallbackRoute([user.lat,user.lng],{lat:hospital[0],lng:hospital[1]});
-
-/* redraw */
-map.removeLayer(window.routeLine);
-window.routeLine=L.polyline(route2,{color:"#ef4444"}).addTo(map);
-
-let j=0;
-
-let interval2=setInterval(()=>{
-
-if(j>=route2.length){
-clearInterval(interval2);
-showETA("🏥 Reached Hospital");
-siren.pause();
-speak("Patient delivered");
-addJarvisMessage("🏥 Completed");
-return;
-}
-
-window.ambulanceMarker.setLatLng(route2[j]);
-
-let speed=80*trafficFactor();
-j++;
-
-},speed);
-
-},2000);
 
 return;
 }
 
 window.ambulanceMarker.setLatLng(route[i]);
-
-showETA("🚑 Arriving in "+Math.max(1,Math.round(eta*(1-i/total)))+" min");
-
 i++;
 
-},80);
+},speed);
 
 };
 </script>
