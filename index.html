@@ -28,7 +28,6 @@ padding:25px;
 font-weight:bold;
 }
 
-/* BUTTONS */
 .buttonContainer{
 display:flex;
 flex-wrap:wrap;
@@ -169,7 +168,6 @@ background:#22c55e;
 color:black;
 }
 
-/* TOGGLE */
 #toggleJarvis{
 position:fixed;
 bottom:160px;
@@ -228,7 +226,7 @@ function speak(text){
 speechSynthesis.speak(new SpeechSynthesisUtterance(text));
 }
 
-/* FIRST AID FULL */
+/* FIRST AID */
 const firstAidInstructions={
 bruise:["Apply cold compress immediately","Rest the area","Elevate if possible","Avoid pressure"],
 cut:["Clean with water","Apply antiseptic","Stop bleeding with pressure","Cover with bandage"],
@@ -326,7 +324,7 @@ pos=>initMap(pos.coords.latitude,pos.coords.longitude),
 ()=>initMap(28.6139,77.2090)
 );
 
-/* 🚑 FINAL AMBULANCE FIX (EMOJI + ALWAYS WORKS) */
+/* 🚑 REALISTIC AMBULANCE */
 async function dispatchRescue(){
 if(!map||!userMarker)return;
 
@@ -334,37 +332,47 @@ speak("Ambulance on the way");
 addJarvisMessage("🚑 Ambulance dispatched");
 
 const user=userMarker.getLatLng();
+const start=[user.lat+0.01,user.lng-0.01];
 
-/* ALWAYS VISIBLE START */
-const start=[user.lat+0.005,user.lng-0.005];
-
-/* FORCE VIEW */
 map.fitBounds([start,user],{padding:[50,50]});
 
-/* EMOJI ICON */
 const ambulanceIcon=L.divIcon({
-html:"<div style='font-size:32px'>🚑</div>",
+html:"<div style='font-size:30px'>🚑</div>",
 iconSize:[30,30],
 className:""
 });
 
-/* REMOVE OLD */
 if(window.ambulanceMarker){
 map.removeLayer(window.ambulanceMarker);
 }
 
-/* CREATE */
 window.ambulanceMarker=L.marker(start,{icon:ambulanceIcon}).addTo(map);
 
-/* GUARANTEED ROUTE */
-let route=[
+let route=[];
+
+/* TRY REAL ROADS */
+try{
+const url=`https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${user.lng},${user.lat}?overview=full&geometries=geojson`;
+const res=await fetch(url);
+const data=await res.json();
+
+if(data.routes && data.routes.length>0){
+route=data.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]);
+}
+}catch{}
+
+/* FALLBACK */
+if(route.length===0){
+route=[
 start,
-[user.lat+0.003,user.lng-0.003],
-[user.lat+0.001,user.lng-0.001],
+[user.lat+0.007,user.lng-0.007],
+[user.lat+0.004,user.lng-0.004],
+[user.lat+0.002,user.lng-0.002],
 [user.lat,user.lng]
 ];
+}
 
-/* MOVE */
+/* SMOOTH SPEED */
 let i=0;
 const interval=setInterval(()=>{
 if(i>=route.length){
@@ -375,7 +383,7 @@ return;
 }
 window.ambulanceMarker.setLatLng(route[i]);
 i++;
-},400);
+},120);
 }
 
 /* JARVIS */
