@@ -82,11 +82,7 @@ margin-top:40px;
 border-radius:12px;
 }
 
-.ambulanceIcon{
-font-size:70px;
-}
-
-/* FIRST AID CARDS */
+/* FIRST AID */
 .firstAidContainer{
 display:flex;
 flex-wrap:wrap;
@@ -96,8 +92,8 @@ margin-top:20px;
 }
 
 .firstAidCard{
-position: relative;
-background: linear-gradient(145deg, #16a34a, #22c55e);
+position:relative;
+background:linear-gradient(145deg,#16a34a,#22c55e);
 border-radius:14px;
 padding:20px;
 width:90%;
@@ -105,53 +101,14 @@ max-width:260px;
 text-align:left;
 box-shadow:0 0 12px rgba(34,197,94,0.3);
 overflow:hidden;
-transition:0.3s;
 }
 
 .firstAidCard h4{
-color:white;
 margin-bottom:10px;
 }
 
 .firstAidCard p{
-color:#e0f2f1;
 font-size:14px;
-}
-
-.firstAidCard::before{
-content:'';
-position:absolute;
-top:0;
-left:-75%;
-width:50%;
-height:100%;
-background: linear-gradient(120deg, rgba(255,255,255,0.2), rgba(255,255,255,0.5), rgba(255,255,255,0.2));
-transform: skewX(-25deg);
-}
-
-.firstAidCard:hover::before,
-.firstAidCard:active::before{
-animation:shine 1s forwards;
-}
-
-.firstAidCard:hover{
-transform:scale(1.05);
-box-shadow:0 0 30px rgba(34,197,94,0.7);
-}
-
-@keyframes shine{
-0%{left:-75%;}
-100%{left:125%;}
-}
-
-/* MOBILE */
-@media(max-width:500px){
-button{
-flex:1 1 100%;
-}
-#map{
-height:280px;
-}
 }
 
 /* JARVIS */
@@ -162,7 +119,11 @@ left:0;
 width:100%;
 background:#020617;
 border-top:2px solid #22c55e;
-z-index:999;
+transition:0.3s;
+}
+
+#jarvis.hidden{
+transform:translateY(100%);
 }
 
 #jarvisHeader{
@@ -173,7 +134,7 @@ font-weight:bold;
 }
 
 #jarvisChat{
-max-height:180px;
+max-height:150px;
 overflow-y:auto;
 padding:10px;
 text-align:left;
@@ -200,7 +161,20 @@ padding:10px;
 flex:1;
 background:#22c55e;
 color:black;
-border-radius:10px;
+}
+
+/* TOGGLE BUTTON */
+#toggleJarvis{
+position:fixed;
+bottom:160px;
+right:10px;
+background:#22c55e;
+border:none;
+padding:10px;
+border-radius:50%;
+font-size:18px;
+cursor:pointer;
+z-index:1000;
 }
 </style>
 </head>
@@ -217,23 +191,28 @@ border-radius:10px;
 </div>
 
 <div id="status">Loading AI...</div>
+
 <video id="camera" autoplay playsinline></video>
+
 <div id="heard">Voice: Off</div>
 <div id="result"></div>
 
-<h2>First Aid</h2>
+<h2>First Aid Instructions</h2>
 <div id="firstAid" class="firstAidContainer"></div>
 
-<h2>Map</h2>
+<h2>Emergency Map</h2>
 <div id="map"></div>
+
+<!-- TOGGLE BUTTON -->
+<button id="toggleJarvis" onclick="toggleJarvis()">🤖</button>
 
 <!-- JARVIS -->
 <div id="jarvis">
-<div id="jarvisHeader">🤖 MedAI Assistant</div>
+<div id="jarvisHeader">MedAI Assistant</div>
 <div id="jarvisChat"></div>
 <div id="jarvisControls">
-<button onclick="jarvisScan()">📷 Scan</button>
-<button onclick="jarvisHelp()">🚑 Help</button>
+<button onclick="jarvisScan()">Scan</button>
+<button onclick="jarvisHelp()">Help</button>
 </div>
 </div>
 
@@ -248,12 +227,44 @@ function speak(text){
 speechSynthesis.speak(new SpeechSynthesisUtterance(text));
 }
 
-/* FIRST AID */
+/* FULL FIRST AID */
 const firstAidInstructions={
-bruise:["Apply ice","Rest"],
-cut:["Clean","Bandage"],
-burn:["Cool water","Cover"],
-abrasion:["Clean","Ointment","Cover"]
+bruise:[
+"Apply cold compress immediately",
+"Rest the injured area",
+"Elevate if possible",
+"Avoid pressure on bruise"
+],
+cut:[
+"Clean wound with water",
+"Apply antiseptic",
+"Stop bleeding with pressure",
+"Cover with sterile bandage"
+],
+burn:[
+"Cool under running water",
+"Do not apply ice",
+"Cover with clean cloth",
+"Avoid popping blisters"
+],
+sprain:[
+"Rest the joint",
+"Apply ice pack",
+"Compress with bandage",
+"Elevate limb"
+],
+fracture:[
+"Immobilize area",
+"Do not move patient",
+"Apply splint if trained",
+"Seek medical help immediately"
+],
+abrasion:[
+"Clean wound gently",
+"Apply antiseptic ointment",
+"Cover with bandage",
+"Change dressing regularly"
+]
 };
 
 /* MODEL */
@@ -262,13 +273,9 @@ let modelReady=false;
 const MODEL_URL="https://teachablemachine.withgoogle.com/models/0WBW0685Z/";
 
 async function loadModel(){
-try{
 model=await tmImage.load(MODEL_URL+"model.json",MODEL_URL+"metadata.json");
 modelReady=true;
 document.getElementById("status").innerText="AI Ready";
-}catch{
-document.getElementById("status").innerText="Model failed";
-}
 }
 loadModel();
 
@@ -289,29 +296,33 @@ async function predict(){
 const pred=await model.predict(video);
 let best=pred.reduce((a,b)=>a.probability>b.probability?a:b);
 
-document.getElementById("result").innerText=best.className;
+document.getElementById("result").innerText=
+best.className+" ("+(best.probability*100).toFixed(1)+"%)";
+
 speak(best.className);
 
 showFirstAid(best.className.toLowerCase());
 addJarvisMessage("Detected: "+best.className);
 }
 
+/* FIRST AID DISPLAY */
 function showFirstAid(type){
 const div=document.getElementById("firstAid");
 div.innerHTML="";
+
 (firstAidInstructions[type]||["No data"]).forEach(step=>{
-const el=document.createElement("div");
-el.className="firstAidCard";
-el.innerHTML="<p>"+step+"</p>";
-div.appendChild(el);
+const card=document.createElement("div");
+card.className="firstAidCard";
+card.innerHTML="<h4>"+type+"</h4><p>"+step+"</p>";
+div.appendChild(card);
 });
 }
 
-/* VOICE (UNCHANGED CORE) */
+/* VOICE */
 let recognition;
 function startVoice(){
 if(!('webkitSpeechRecognition' in window)){
-alert("Voice not supported on mobile");
+alert("Voice not supported");
 return;
 }
 
@@ -369,11 +380,13 @@ addJarvisMessage("Help requested",true);
 dispatchRescue();
 }
 
+function toggleJarvis(){
+document.getElementById("jarvis").classList.toggle("hidden");
+}
+
 window.onload=()=>{
-setTimeout(()=>{
 addJarvisMessage("Hello, I am MedAI Assistant");
 addJarvisMessage("Use Scan or Help");
-},1000);
 };
 
 </script>
