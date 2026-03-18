@@ -22,7 +22,6 @@ margin:0;
 padding:10px;
 }
 
-/* HEADER */
 header{
 font-size:clamp(22px,5vw,32px);
 padding:25px;
@@ -51,7 +50,6 @@ min-width:120px;
 .scan{background:#3b82f6;}
 .rescue{background:#ef4444;}
 
-/* CAMERA */
 video{
 width:100%;
 max-width:420px;
@@ -103,7 +101,6 @@ transition:0.3s;
 transform:scale(1.05);
 }
 
-/* SHINE EFFECT */
 .firstAidCard::after{
 content:"";
 position:absolute;
@@ -190,7 +187,7 @@ cursor:pointer;
 <body>
 
 <header>MedAI Emergency Assistant</header>
-<p>AI Injury Detection • Smart Rescue • Voice Enabled</p>
+<p>AI Injury Detection • Voice • Emergency Response</p>
 
 <div class="buttonContainer">
 <button class="voice" onclick="startVoice()">🎤 Voice</button>
@@ -227,18 +224,18 @@ document.body.addEventListener("click",()=>{
 speechSynthesis.speak(new SpeechSynthesisUtterance(""));
 },{once:true});
 
-function speak(t){
-speechSynthesis.speak(new SpeechSynthesisUtterance(t));
+function speak(text){
+speechSynthesis.speak(new SpeechSynthesisUtterance(text));
 }
 
 /* FIRST AID FULL */
 const firstAidInstructions={
-bruise:["Apply ice","Rest","Elevate","Avoid pressure"],
-cut:["Clean with water","Apply antiseptic","Stop bleeding","Bandage"],
-burn:["Cool under water","Do not ice","Cover lightly","No popping"],
-sprain:["Rest","Ice","Compress","Elevate"],
-fracture:["Immobilize","Do not move","Splint if trained","Call help"],
-abrasion:["Clean wound","Apply ointment","Cover","Change dressing"]
+bruise:["Apply cold compress immediately","Rest the area","Elevate if possible","Avoid pressure"],
+cut:["Clean with water","Apply antiseptic","Stop bleeding with pressure","Cover with bandage"],
+burn:["Cool under running water","Do not apply ice","Cover with cloth","Avoid popping blisters"],
+sprain:["Rest joint","Apply ice","Compress","Elevate limb"],
+fracture:["Immobilize area","Do not move","Apply splint","Seek medical help"],
+abrasion:["Clean wound","Apply ointment","Cover with bandage","Change dressing regularly"]
 };
 
 /* MODEL */
@@ -277,16 +274,16 @@ speak(best.className);
 addJarvisMessage("Detected: "+best.className);
 }
 
-/* FIRST AID SHOW */
+/* FIRST AID DISPLAY */
 function showFirstAid(type){
 const div=document.getElementById("firstAid");
 div.innerHTML="";
 
 (firstAidInstructions[type]||["No data"]).forEach(step=>{
-const c=document.createElement("div");
-c.className="firstAidCard";
-c.innerHTML="<b>"+type+"</b><br>"+step;
-div.appendChild(c);
+const card=document.createElement("div");
+card.className="firstAidCard";
+card.innerHTML="<b>"+type+"</b><br>"+step;
+div.appendChild(card);
 });
 }
 
@@ -294,7 +291,7 @@ div.appendChild(c);
 let recognition;
 function startVoice(){
 if(!('webkitSpeechRecognition' in window)){
-alert("Voice not supported on this device");
+alert("Voice not supported");
 return;
 }
 
@@ -304,7 +301,6 @@ recognition.start();
 
 recognition.onresult=e=>{
 let t=e.results[e.results.length-1][0].transcript.toLowerCase();
-
 document.getElementById("heard").innerText="Heard: "+t;
 
 if(t.includes("scan"))startScan();
@@ -330,7 +326,7 @@ pos=>initMap(pos.coords.latitude,pos.coords.longitude),
 ()=>initMap(28.6139,77.2090)
 );
 
-/* 🚑 DISPATCH FIXED */
+/* 🚑 FINAL AMBULANCE FIX (EMOJI + ALWAYS WORKS) */
 async function dispatchRescue(){
 if(!map||!userMarker)return;
 
@@ -338,48 +334,48 @@ speak("Ambulance on the way");
 addJarvisMessage("🚑 Ambulance dispatched");
 
 const user=userMarker.getLatLng();
-const start=[user.lat+0.02,user.lng-0.02];
 
-let route=[];
+/* ALWAYS VISIBLE START */
+const start=[user.lat+0.005,user.lng-0.005];
 
-try{
-const url=`https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${user.lng},${user.lat}?overview=full&geometries=geojson`;
-const res=await fetch(url);
-const data=await res.json();
+/* FORCE VIEW */
+map.fitBounds([start,user],{padding:[50,50]});
 
-if(data.routes && data.routes.length>0){
-route=data.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]);
-}
-}catch{}
+/* EMOJI ICON */
+const ambulanceIcon=L.divIcon({
+html:"<div style='font-size:32px'>🚑</div>",
+iconSize:[30,30],
+className:""
+});
 
-/* FALLBACK */
-if(route.length===0){
-route=[
-start,
-[user.lat+0.015,user.lng-0.015],
-[user.lat+0.008,user.lng-0.005],
-[user.lat,user.lng]
-];
-}
-
-/* MOVE */
+/* REMOVE OLD */
 if(window.ambulanceMarker){
 map.removeLayer(window.ambulanceMarker);
 }
 
-window.ambulanceMarker=L.marker(route[0]).addTo(map);
+/* CREATE */
+window.ambulanceMarker=L.marker(start,{icon:ambulanceIcon}).addTo(map);
 
+/* GUARANTEED ROUTE */
+let route=[
+start,
+[user.lat+0.003,user.lng-0.003],
+[user.lat+0.001,user.lng-0.001],
+[user.lat,user.lng]
+];
+
+/* MOVE */
 let i=0;
 const interval=setInterval(()=>{
-window.ambulanceMarker.setLatLng(route[i]);
-i++;
-
 if(i>=route.length){
 clearInterval(interval);
 speak("Ambulance arrived");
 addJarvisMessage("✅ Arrived");
+return;
 }
-},300);
+window.ambulanceMarker.setLatLng(route[i]);
+i++;
+},400);
 }
 
 /* JARVIS */
