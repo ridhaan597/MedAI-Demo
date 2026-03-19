@@ -2,8 +2,9 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>MedAI Emergency Assistant</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>MedAI Emergency Assistant</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -12,60 +13,225 @@
 <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.4/dist/teachablemachine-image.min.js"></script>
 
 <style>
-body{font-family:Arial;background:#0f172a;color:white;text-align:center;margin:0}
+body{
+font-family:Arial;
+background:#0f172a;
+color:white;
+text-align:center;
+margin:0;
+padding:10px;
+}
 
-/* disclaimer */
+header{
+font-size:clamp(22px,5vw,32px);
+padding:25px;
+font-weight:bold;
+}
+<button id="langToggle" style="
+position:absolute;
+top:20px;
+right:20px;
+background:#22c55e;
+color:black;
+border:none;
+padding:8px 14px;
+border-radius:20px;
+cursor:pointer;
+z-index:10000;
+">
+🌐 हिंदी
+</button>
+
+.buttonContainer{
+display:flex;
+flex-wrap:wrap;
+justify-content:center;
+gap:10px;
+}
+
+button{
+padding:12px 20px;
+border:none;
+border-radius:20px;
+font-size:16px;
+cursor:pointer;
+flex:1 1 30%;
+min-width:120px;
+}
+
+.voice{background:#22c55e;}
+.scan{background:#3b82f6;}
+.rescue{background:#ef4444;}
+
+video{
+width:100%;
+max-width:420px;
+margin-top:20px;
+border-radius:12px;
+}
+
+/* 🔄 camera wrapper */
+#cameraWrapper{
+position:relative;
+display:inline-block;
+}
+
+/* 🔄 flip button overlay */
+#flipOverlayBtn{
+position:absolute;
+bottom:15px;
+right:15px;
+background:rgba(0,0,0,0.6);
+color:white;
+border:none;
+padding:10px 14px;
+border-radius:20px;
+font-size:14px;
+cursor:pointer;
+z-index:10;
+backdrop-filter:blur(6px);
+display:none;
+}
+
+#heard{
+margin-top:15px;
+font-size:18px;
+color:#38bdf8;
+}
+
+#result{
+margin-top:10px;
+font-size:22px;
+}
+
+/* MAP */
+#map{
+width:100%;
+height:350px;
+margin-top:40px;
+border-radius:12px;
+}
+
+/* FIRST AID */
+.firstAidContainer{
+display:flex;
+flex-wrap:wrap;
+justify-content:center;
+gap:20px;
+margin-top:20px;
+}
+
+.firstAidCard{
+position:relative;
+background:linear-gradient(145deg,#16a34a,#22c55e);
+border-radius:14px;
+padding:20px;
+width:90%;
+max-width:260px;
+box-shadow:0 0 12px rgba(34,197,94,0.3);
+overflow:hidden;
+transition:0.3s;
+}
+
+.firstAidCard:hover{
+transform:scale(1.05);
+}
+
+.firstAidCard::after{
+content:"";
+position:absolute;
+top:0;
+left:-100%;
+width:100%;
+height:100%;
+background:linear-gradient(120deg,transparent,rgba(255,255,255,0.4),transparent);
+transition:0.5s;
+}
+
+.firstAidCard:hover::after{
+left:100%;
+}
+
+/* JARVIS */
+#jarvis{
+position:fixed;
+bottom:0;
+left:0;
+width:100%;
+background:#020617;
+border-top:2px solid #22c55e;
+z-index:9999;
+transition:0.3s;
+}
+
+#jarvis.hidden{
+transform:translateY(100%);
+}
+
+#jarvisHeader{
+padding:10px;
+background:#022c22;
+color:#4ade80;
+font-weight:bold;
+}
+
+#jarvisChat{
+max-height:150px;
+overflow-y:auto;
+padding:10px;
+text-align:left;
+}
+
+.jarvisMsg{
+margin:6px 0;
+padding:8px;
+border-radius:10px;
+background:#111827;
+}
+
+.jarvisUser{
+background:#1d4ed8;
+}
+
+#jarvisControls{
+display:flex;
+gap:10px;
+padding:10px;
+}
+
+#jarvisControls button{
+flex:1;
+background:#22c55e;
+color:black;
+}
+
+#toggleJarvis{
+position:fixed;
+bottom:160px;
+right:10px;
+background:#22c55e;
+border:none;
+padding:10px;
+border-radius:50%;
+z-index:10000;
+cursor:pointer;
+}
+
+/* DISCLAIMER */
 #topDisclaimer{
 background:#020617;
-padding:12px;
 border-bottom:2px solid #22c55e;
+padding:12px;
+font-size:14px;
+line-height:1.5;
+color:#e5e7eb;
 }
 
-/* header */
-header{font-size:28px;padding:20px}
-
-/* buttons */
-button{padding:12px 18px;margin:8px;border:none;border-radius:20px;cursor:pointer}
-.voice{background:#22c55e}
-.scan{background:#3b82f6}
-.rescue{background:#ef4444}
-
-/* lang */
-#langToggle{
-position:fixed;top:15px;right:15px;z-index:100000;
-background:#22c55e;color:black;padding:8px 14px;border-radius:20px;
-}
-
-/* camera */
-#cameraWrapper{position:relative}
-video{width:90%;max-width:400px;border-radius:12px}
-#flipBtn{
-position:absolute;bottom:10px;right:10px;
-background:rgba(0,0,0,0.6);color:white;border-radius:20px;padding:8px;display:none;
-}
-
-/* map */
-#map{height:350px;margin-top:20px}
-
-/* 🩹 first aid */
-#firstAid{margin-top:15px}
-
-/* jarvis */
-#jarvis{
-position:fixed;bottom:0;width:100%;
-background:#020617;z-index:9999;
-}
-#jarvis.hidden{display:none}
-#toggleJarvis{
-position:fixed;bottom:120px;right:10px;z-index:10000;
-}
-
-/* inactivity */
-#inactiveModal{
-position:fixed;top:0;left:0;width:100%;height:100%;
-background:rgba(0,0,0,0.85);
-display:none;justify-content:center;align-items:center;
-z-index:99999;
+#aiWarning{
+margin-top:10px;
+font-size:16px;
+color:#facc15;
+font-weight:bold;
 }
 </style>
 </head>
@@ -73,286 +239,553 @@ z-index:99999;
 <body>
 
 <div id="topDisclaimer">
-⚠️ MedAI is made by class 10 students. This is first aid guidance only, not medical diagnosis.
+⚠️ MedAI is made by class 10 students. This is first aid guidance only, not medical diagnosis. Call emergency for serious injuries. Trust AI at your own risk.
 </div>
 
-<button id="langToggle">🌐 हिंदी</button>
-
 <header>MedAI Emergency Assistant</header>
+<p>AI Injury Detection • Voice • Emergency Response</p>
 
+<div class="buttonContainer">
 <button class="voice" onclick="startVoice()">🎤 Voice</button>
 <button class="scan" onclick="startScan()">📷 Scan</button>
 <button class="rescue" onclick="dispatchRescue()">🚑 Ambulance</button>
-
-<div id="cameraWrapper">
-<video id="camera" autoplay playsinline></video>
-<button id="flipBtn">🔄 Flip</button>
 </div>
 
-<div id="heard"></div>
+<!-- ✅ ONLY CHANGE: wrapped video -->
+<div id="cameraWrapper">
+<video id="camera" autoplay playsinline></video>
+<button id="flipOverlayBtn">🔄 Flip</button>
+</div>
+
+<div id="heard">Voice: Off</div>
 <div id="result"></div>
+
+<h2>First Aid Instructions</h2>
 <div id="aiWarning"></div>
+<div id="firstAid" class="firstAidContainer"></div>
 
-<!-- 🩹 FIRST AID -->
-<div id="firstAid"></div>
-
-<h2>Map</h2>
+<h2>Emergency Map</h2>
 <div id="map"></div>
 
 <button id="toggleJarvis" onclick="toggleJarvis()">🤖</button>
 
-<div id="jarvis" class="hidden">
-<div>Assistant</div>
-<button onclick="startScan()">Scan</button>
-<button onclick="dispatchRescue()">Help</button>
-</div>
-
-<!-- inactivity -->
-<div id="inactiveModal">
-<div style="background:#020617;padding:20px;border-radius:12px;">
-<h2>Need Help?</h2>
-<p id="inactiveTimer">60</p>
-<button id="yesHelp">Yes</button>
-<button id="noHelp">No</button>
+<div id="jarvis">
+<div id="jarvisHeader">MedAI Assistant</div>
+<div id="jarvisChat"></div>
+<div id="jarvisControls">
+<button onclick="jarvisScan()">Scan</button>
+<button onclick="jarvisHelp()">Help</button>
 </div>
 </div>
 
 <script>
 
-/* 🩹 FIRST AID DATA */
-const firstAidData={
-bruise:["Apply ice","Rest area","Elevate limb"],
-cut:["Clean wound","Apply antiseptic","Bandage"],
-burn:["Cool with water","Do not apply ice","Cover lightly"],
-sprain:["Rest","Ice","Compression","Elevation"]
-};
-
-/* LANGUAGE */
-let currentLang="en";
-const TEXTS={
-en:{title:"MedAI Emergency Assistant",yes:"Yes",no:"No",warn:"⚠️ AI can make mistakes",arrived:"Ambulance has arrived"},
-hi:{title:"मेडएआई सहायक",yes:"हाँ",no:"नहीं",warn:"⚠️ AI गलती कर सकता है",arrived:"एम्बुलेंस पहुँच गई है"}
-};
-
-document.getElementById("langToggle").onclick=()=>{
-currentLang=currentLang==="en"?"hi":"en";
-document.querySelector("header").innerText=TEXTS[currentLang].title;
-};
-
 /* SPEAK */
+document.body.addEventListener("click",()=>{
+speechSynthesis.speak(new SpeechSynthesisUtterance(""));
+},{once:true});
+
 function speak(text){
-let s=new SpeechSynthesisUtterance(text);
-s.lang=currentLang==="hi"?"hi-IN":"en-US";
-speechSynthesis.speak(s);
+speechSynthesis.speak(new SpeechSynthesisUtterance(text));
 }
+
+/* FIRST AID */
+const firstAidInstructions={
+bruise:["Apply cold compress immediately","Rest the area","Elevate if possible","Avoid pressure"],
+cut:["Clean with water","Apply antiseptic","Stop bleeding with pressure","Cover with bandage"],
+burn:["Cool under running water","Do not apply ice","Cover with cloth","Avoid popping blisters"],
+sprain:["Rest joint","Apply ice","Compress","Elevate limb"],
+fracture:["Immobilize area","Do not move","Apply splint","Seek medical help"],
+abrasion:["Clean wound","Apply ointment","Cover with bandage","Change dressing regularly"]
+};
 
 /* MODEL */
 let model;
+let modelReady=false;
 const MODEL_URL="https://teachablemachine.withgoogle.com/models/0WBW0685Z/";
-tmImage.load(MODEL_URL+"model.json",MODEL_URL+"metadata.json").then(m=>model=m);
+
+async function loadModel(){
+model=await tmImage.load(MODEL_URL+"model.json",MODEL_URL+"metadata.json");
+modelReady=true;
+}
+loadModel();
 
 /* CAMERA */
-let video=document.getElementById("camera");
-let facing="environment";
+const video=document.getElementById("camera");
+const flipBtn=document.getElementById("flipOverlayBtn");
+let currentFacingMode="environment";
+const isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
 async function startScan(){
-const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:facing}});
+if(!modelReady)return alert("Model loading");
+
+const stream=await navigator.mediaDevices.getUserMedia({
+video:{facingMode:currentFacingMode}
+});
 video.srcObject=stream;
-setTimeout(predict,1500);
+
+if(isMobile) flipBtn.style.display="block";
+
+video.onloadeddata=()=>setTimeout(predict,1500);
 }
 
-/* AI */
-async function predict(){
-const p=await model.predict(video);
-let best=p.reduce((a,b)=>a.probability>b.probability?a:b);
+/* 🔄 FLIP */
+flipBtn.onclick=async()=>{
+currentFacingMode=currentFacingMode==="user"?"environment":"user";
 
-document.getElementById("result").innerHTML=
+if(video.srcObject){
+video.srcObject.getTracks().forEach(t=>t.stop());
+}
+
+const stream=await navigator.mediaDevices.getUserMedia({
+video:{facingMode:currentFacingMode}
+});
+
+video.srcObject=stream;
+speak("Camera flipped");
+};
+
+/* PREDICT */
+async function predict(){
+const pred=await model.predict(video);
+let best=pred.reduce((a,b)=>a.probability>b.probability?a:b);
+
+document.getElementById("result").innerText=
 best.className+" ("+(best.probability*100).toFixed(1)+"%)";
 
-document.getElementById("aiWarning").innerText=TEXTS[currentLang].warn;
+document.getElementById("aiWarning").innerText="⚠️ AI can make mistakes";
 
-/* 🩹 SHOW FIRST AID */
-let steps=firstAidData[best.className.toLowerCase()]||["No data"];
-let container = document.getElementById("firstAid");
-container.innerHTML = "<h3>First Aid</h3>";
-
-steps.forEach(step=>{
-let card = document.createElement("div");
-card.className="aidCard";
-card.innerText=step;
-container.appendChild(card);
-});
-/* 🩹 FIRST AID CARDS */
-.aidCard{
-background:linear-gradient(145deg,#16a34a,#22c55e);
-padding:15px;
-margin:10px auto;
-max-width:260px;
-border-radius:12px;
-box-shadow:0 0 10px rgba(34,197,94,0.3);
-transition:0.3s;
-position:relative;
-overflow:hidden;
-}
-
-.aidCard:hover{
-transform:scale(1.05);
-box-shadow:0 0 20px rgba(34,197,94,0.8);
-}
-
-/* shine effect */
-.aidCard::after{
-content:"";
-position:absolute;
-top:0;
-left:-100%;
-width:100%;
-height:100%;
-background:linear-gradient(120deg,transparent,rgba(255,255,255,0.5),transparent);
-transition:0.5s;
-}
-
-.aidCard:hover::after{
-left:100%;
-}
-
+showFirstAid(best.className.toLowerCase());
 speak(best.className);
+addJarvisMessage("Detected: "+best.className);
+}
+
+/* FIRST AID DISPLAY */
+function showFirstAid(type){
+const div=document.getElementById("firstAid");
+div.innerHTML="";
+
+(firstAidInstructions[type]||["No data"]).forEach(step=>{
+const card=document.createElement("div");
+card.className="firstAidCard";
+card.innerHTML="<b>"+type+"</b><br>"+step;
+div.appendChild(card);
+});
 }
 
 /* VOICE */
+let recognition;
 function startVoice(){
-let r=new webkitSpeechRecognition();
-r.start();
-r.onresult=e=>{
-let t=e.results[0][0].transcript.toLowerCase();
-document.getElementById("heard").innerText=t;
-if(t.includes("scan")) startScan();
-if(t.includes("help")) dispatchRescue();
-};
-}
-
-/* 📍 MAP FIXED (REAL LOCATION) */
-let map=L.map('map').setView([28.6,77.2],13);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-let userMarker;
-
-navigator.geolocation.getCurrentPosition(pos=>{
-let lat=pos.coords.latitude;
-let lng=pos.coords.longitude;
-
-map.setView([lat,lng],15);
-userMarker=L.marker([lat,lng]).addTo(map);
-
-},()=>{
-userMarker=L.marker([28.6,77.2]).addTo(map);
-});
-
-let ambulanceMarker;
-
-async function dispatchRescue(){
-
-if(!userMarker) return;
-
-let user = userMarker.getLatLng();
-
-/* start farther away */
-let start=[user.lat+0.03,user.lng-0.03];
-
-/* remove old */
-if(ambulanceMarker) map.removeLayer(ambulanceMarker);
-
-/* ambulance icon */
-ambulanceMarker = L.marker(start,{
-icon:L.divIcon({html:"🚑",className:"",iconSize:[30,30]})
-}).addTo(map);
-
-speak("Ambulance is on the way");
-
-/* 🚨 get REAL ROAD ROUTE */
-let route=[];
-
-try{
-let res = await fetch(`https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${user.lng},${user.lat}?overview=full&geometries=geojson`);
-let data = await res.json();
-
-route = data.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]);
-}catch(e){
-console.log("Fallback route");
-
-/* fallback smooth curve */
-let steps=150;
-for(let i=0;i<=steps;i++){
-route.push([
-start[0]+(user.lat-start[0])*(i/steps),
-start[1]+(user.lng-start[1])*(i/steps)
-]);
-}
-}
-
-/* 🚑 move smoothly */
-let i=0;
-let move=setInterval(()=>{
-
-if(i >= route.length){
-clearInterval(move);
-
-/* ✅ FIXED ARRIVAL */
-setTimeout(()=>{
-speak(TEXTS[currentLang].arrived);
-},500);
-
+if(!('webkitSpeechRecognition' in window)){
+alert("Voice not supported");
 return;
 }
 
-ambulanceMarker.setLatLng(route[i]);
-i++;
+recognition=new webkitSpeechRecognition();
+recognition.continuous=true;
+recognition.start();
 
+recognition.onresult=e=>{
+let t=e.results[e.results.length-1][0].transcript.toLowerCase();
+document.getElementById("heard").innerText="Heard: "+t;
+
+if(t.includes("scan"))startScan();
+if(t.includes("ambulance")||t.includes("help"))dispatchRescue();
+};
+}
+
+/* MAP */
+let map,userMarker;
+
+function initMap(lat,lon){
+map=L.map('map').setView([lat,lon],15);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+userMarker=L.marker([lat,lon]).addTo(map);
+
+setTimeout(()=>map.invalidateSize(),500);
+}
+
+navigator.geolocation.getCurrentPosition(
+pos=>initMap(pos.coords.latitude,pos.coords.longitude),
+()=>initMap(28.6139,77.2090)
+);
+
+/* 🚑 AMBULANCE */
+async function dispatchRescue(){
+if(!map||!userMarker)return;
+
+const user=userMarker.getLatLng();
+const start=[user.lat+0.01,user.lng-0.01];
+
+const ambulanceIcon=L.divIcon({
+html:"<div style='font-size:30px'>🚑</div>",
+iconSize:[30,30],
+className:""
+});
+
+window.ambulanceMarker=L.marker(start,{icon:ambulanceIcon}).addTo(map);
+
+let route=[start,[user.lat,user.lng]];
+
+let i=0;
+const interval=setInterval(()=>{
+if(i>=route.length){
+clearInterval(interval);
+speak("Ambulance arrived");
+return;
+}
+window.ambulanceMarker.setLatLng(route[i]);
+i++;
 },120);
 }
+
 /* JARVIS */
+function addJarvisMessage(text,user=false){
+const chat=document.getElementById("jarvisChat");
+const msg=document.createElement("div");
+msg.className="jarvisMsg"+(user?" jarvisUser":"");
+msg.innerText=text;
+chat.appendChild(msg);
+chat.scrollTop=chat.scrollHeight;
+}
+
+function jarvisScan(){startScan();}
+function jarvisHelp(){dispatchRescue();}
 function toggleJarvis(){
 document.getElementById("jarvis").classList.toggle("hidden");
 }
 
-/* INACTIVITY */
-let timer,count=60;
+window.onload=()=>{
+addJarvisMessage("Hello, I am MedAI Assistant");
+};
+/* ===================================== */
+/* 🚑 FINAL FIXED AMBULANCE MOVEMENT */
+/* ===================================== */
 
-function resetInactivity(){
-clearTimeout(timer);
-timer=setTimeout(showPopup,30000);
+let sirenFix = new Audio("https://www.soundjay.com/misc/sounds/ambulance-siren-01.mp3");
+sirenFix.loop = true;
+
+function slowFallbackRoute(start,user){
+    let route=[];
+    let steps=300; // longer for smoother/slower
+    for(let i=0;i<=steps;i++){
+        let lat=start[0]+(user.lat-start[0])*(i/steps);
+        let lng=start[1]+(user.lng-start[1])*(i/steps);
+        route.push([lat,lng]);
+    }
+    return route;
 }
 
-document.onclick=resetInactivity;
-document.onmousemove=resetInactivity;
+const dispatchRescue_original = dispatchRescue;
 
-function showPopup(){
-document.getElementById("inactiveModal").style.display="flex";
+dispatchRescue = async function(){
+    if(!map || !userMarker){
+        dispatchRescue_original();
+        return;
+    }
 
-count=60;
-let i=setInterval(()=>{
-count--;
-document.getElementById("inactiveTimer").innerText=count;
+    const user=userMarker.getLatLng();
 
-if(count<=0){
-clearInterval(i);
+    /* spawn farther so it doesn't instantly appear */
+    const start=[user.lat+0.035,user.lng-0.035];
+
+    /* remove previous ambulance safely */
+    if(window.ambulanceMarker) map.removeLayer(window.ambulanceMarker);
+
+    /* emoji ambulance */
+    const icon=L.divIcon({
+        html:"<div style='font-size:34px'>🚑</div>",
+        className:""
+    });
+
+    window.ambulanceMarker=L.marker(start,{icon}).addTo(map);
+
+    /* siren */
+    sirenFix.currentTime=0;
+    sirenFix.play().catch(()=>{});
+
+    speak("Ambulance on the way");
+
+    /* try real route */
+    let route=[];
+    try{
+        let res=await fetch(`https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${user.lng},${user.lat}?overview=full&geometries=geojson`);
+        let data=await res.json();
+        if(data.routes && data.routes.length>0){
+            route=data.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]);
+        }
+    }catch{}
+
+    /* fallback if needed */
+    if(!route.length){
+        route=slowFallbackRoute(start,user);
+    }
+
+    /* smooth movement */
+    let i=0;
+    const speed=150; // ms per step
+    const move=setInterval(()=>{
+        if(i>=route.length){
+            clearInterval(move);
+            sirenFix.pause();
+            speak("Ambulance has arrived");
+            if(typeof addJarvisMessage==="function"){
+                addJarvisMessage("🚑 Ambulance has arrived");
+            }
+            return;
+        }
+        window.ambulanceMarker.setLatLng(route[i]);
+        i++;
+    },speed);
+};
+/* ===================================== */
+/* 🚨 INACTIVITY TRACKER (ADD ONLY) */
+/* ===================================== */
+
+let inactivityTimer;
+let countdownInterval;
+let countdown = 60;
+
+function resetInactivity(){
+clearTimeout(inactivityTimer);
+
+inactivityTimer=setTimeout(()=>{
+showInactivePopup();
+},30000);
+}
+
+["click","touchstart","mousemove","keydown"].forEach(evt=>{
+document.addEventListener(evt,resetInactivity);
+});
+
+resetInactivity();
+
+function showInactivePopup(){
+
+const modal=document.getElementById("inactiveModal");
+modal.style.display="flex";
+
+countdown=60;
+updateTimer();
+
+/* disable interaction */
+document.body.style.pointerEvents="none";
+modal.style.pointerEvents="all";
+
+countdownInterval=setInterval(()=>{
+countdown--;
+updateTimer();
+
+if(countdown<=0){
+clearInterval(countdownInterval);
+closeInactivePopup();
 dispatchRescue();
 }
 },1000);
 }
 
-document.getElementById("yesHelp").onclick=()=>{
-dispatchRescue();
-document.getElementById("inactiveModal").style.display="none";
-};
+function updateTimer(){
+document.getElementById("inactiveTimer").innerText=
+"Auto dispatch in "+countdown+"s";
+}
 
-document.getElementById("noHelp").onclick=()=>{
-document.getElementById("inactiveModal").style.display="none";
-};
+function closeInactivePopup(){
+const modal=document.getElementById("inactiveModal");
+modal.style.display="none";
+
+clearInterval(countdownInterval);
+
+document.body.style.pointerEvents="auto";
 
 resetInactivity();
+}
 
+/* wait till DOM fully loads */
+window.addEventListener("load", ()=>{
+
+const yesBtn=document.getElementById("yesHelp");
+const noBtn=document.getElementById("noHelp");
+
+if(yesBtn){
+yesBtn.onclick=()=>{
+closeInactivePopup();
+dispatchRescue();
+};
+}
+
+if(noBtn){
+noBtn.onclick=()=>{
+closeInactivePopup();
+};
+}
+
+});
+/* ===================================== */
+/* 🌐 MULTI-LANGUAGE SYSTEM (ADD ONLY) */
+/* ===================================== */
+
+let currentLang = "en";
+
+/* translations */
+const TEXTS = {
+en: {
+title: "MedAI Emergency Assistant",
+voice: "🎤 Start Voice Assistant",
+scan: "📷 Scan Injury",
+rescue: "🚑 Send Ambulance",
+aiMistake: "⚠️ AI can make mistakes",
+needHelp: "Need Help?",
+autoDispatch: "Auto dispatch in ",
+yes: "Yes",
+no: "No",
+arrived: "Ambulance has arrived"
+},
+
+hi: {
+title: "मेडएआई आपातकालीन सहायक",
+voice: "🎤 वॉइस शुरू करें",
+scan: "📷 चोट स्कैन करें",
+rescue: "🚑 एम्बुलेंस भेजें",
+aiMistake: "⚠️ AI गलती कर सकता है",
+needHelp: "मदद चाहिए?",
+autoDispatch: "स्वचालित एम्बुलेंस ",
+yes: "हाँ",
+no: "नहीं",
+arrived: "एम्बुलेंस पहुँच गई है"
+}
+};
+
+/* APPLY LANGUAGE */
+function applyLanguage(){
+
+/* header */
+document.querySelector("header").innerText = TEXTS[currentLang].title;
+
+/* buttons */
+document.querySelector(".voice").innerText = TEXTS[currentLang].voice;
+document.querySelector(".scan").innerText = TEXTS[currentLang].scan;
+document.querySelector(".rescue").innerText = TEXTS[currentLang].rescue;
+
+/* inactivity popup */
+const modalTitle = document.querySelector("#inactiveModal h2");
+if(modalTitle) modalTitle.innerText = TEXTS[currentLang].needHelp;
+
+const yesBtn = document.getElementById("yesHelp");
+const noBtn = document.getElementById("noHelp");
+
+if(yesBtn) yesBtn.innerText = TEXTS[currentLang].yes;
+if(noBtn) noBtn.innerText = TEXTS[currentLang].no;
+
+/* AI warning */
+const warn = document.getElementById("aiWarning");
+if(warn) warn.innerText = TEXTS[currentLang].aiMistake;
+
+}
+
+/* TOGGLE BUTTON */
+document.getElementById("langToggle").onclick = ()=>{
+currentLang = (currentLang === "en") ? "hi" : "en";
+
+/* change button label */
+document.getElementById("langToggle").innerText =
+currentLang === "en" ? "🌐 हिंदी" : "🌐 English";
+
+applyLanguage();
+};
+
+/* ===================================== */
+/* 🗣️ MAKE SPEECH MULTI-LANGUAGE */
+/* ===================================== */
+
+const originalSpeak = speak;
+
+speak = function(text){
+
+const speech = new SpeechSynthesisUtterance(text);
+
+/* language switch */
+speech.lang = (currentLang === "hi") ? "hi-IN" : "en-US";
+
+speechSynthesis.speak(speech);
+};
+
+/* ===================================== */
+/* 🚑 TRANSLATE AMBULANCE ARRIVAL */
+/* ===================================== */
+
+const originalDispatch2 = dispatchRescue;
+
+dispatchRescue = async function(){
+
+await originalDispatch2();
+
+/* override arrival speech */
+setTimeout(()=>{
+speak(TEXTS[currentLang].arrived);
+},500);
+
+};
+
+/* ===================================== */
+/* ⏱️ UPDATE TIMER TEXT LANGUAGE */
+/* ===================================== */
+
+const originalUpdateTimer = updateTimer;
+
+updateTimer = function(){
+
+document.getElementById("inactiveTimer").innerText =
+TEXTS[currentLang].autoDispatch + countdown + "s";
+
+};
+
+/* INIT */
+window.addEventListener("load", applyLanguage);
 </script>
+<!-- 🚨 INACTIVITY MODAL -->
+<div id="inactiveModal" style="
+position:fixed;
+top:0;left:0;
+width:100%;height:100%;
+background:rgba(0,0,0,0.8);
+display:none;
+justify-content:center;
+align-items:center;
+z-index:99999;
+">
 
+<div style="
+background:#020617;
+padding:30px;
+border-radius:16px;
+text-align:center;
+max-width:300px;
+width:90%;
+box-shadow:0 0 20px rgba(34,197,94,0.5);
+">
+
+<h2>Need Help?</h2>
+<p id="inactiveTimer">Auto dispatch in 60s</p>
+
+<button id="yesHelp" style="
+background:#22c55e;
+color:black;
+margin:10px;
+padding:10px 20px;
+border-radius:20px;
+">Yes</button>
+
+<button id="noHelp" style="
+background:#ef4444;
+color:white;
+margin:10px;
+padding:10px 20px;
+border-radius:20px;
+">No</button>
+
+</div>
+</div>
 </body>
 </html>
