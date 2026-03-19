@@ -47,6 +47,9 @@ background:rgba(0,0,0,0.6);color:white;border-radius:20px;padding:8px;display:no
 /* map */
 #map{height:350px;margin-top:20px}
 
+/* 🩹 first aid */
+#firstAid{margin-top:15px}
+
 /* jarvis */
 #jarvis{
 position:fixed;bottom:0;width:100%;
@@ -70,7 +73,7 @@ z-index:99999;
 <body>
 
 <div id="topDisclaimer">
-⚠️ MedAI is made by class 10 students. This is first aid guidance only, not medical diagnosis. Call emergency for serious injuries. Trust AI at your own risk.
+⚠️ MedAI is made by class 10 students. This is first aid guidance only, not medical diagnosis.
 </div>
 
 <button id="langToggle">🌐 हिंदी</button>
@@ -89,6 +92,9 @@ z-index:99999;
 <div id="heard"></div>
 <div id="result"></div>
 <div id="aiWarning"></div>
+
+<!-- 🩹 FIRST AID -->
+<div id="firstAid"></div>
 
 <h2>Map</h2>
 <div id="map"></div>
@@ -113,6 +119,14 @@ z-index:99999;
 
 <script>
 
+/* 🩹 FIRST AID DATA */
+const firstAidData={
+bruise:["Apply ice","Rest area","Elevate limb"],
+cut:["Clean wound","Apply antiseptic","Bandage"],
+burn:["Cool with water","Do not apply ice","Cover lightly"],
+sprain:["Rest","Ice","Compression","Elevation"]
+};
+
 /* LANGUAGE */
 let currentLang="en";
 const TEXTS={
@@ -123,9 +137,6 @@ hi:{title:"मेडएआई सहायक",yes:"हाँ",no:"नहीं"
 document.getElementById("langToggle").onclick=()=>{
 currentLang=currentLang==="en"?"hi":"en";
 document.querySelector("header").innerText=TEXTS[currentLang].title;
-document.getElementById("yesHelp").innerText=TEXTS[currentLang].yes;
-document.getElementById("noHelp").innerText=TEXTS[currentLang].no;
-document.getElementById("langToggle").innerText=currentLang==="en"?"🌐 हिंदी":"🌐 English";
 };
 
 /* SPEAK */
@@ -147,62 +158,83 @@ let facing="environment";
 async function startScan(){
 const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:facing}});
 video.srcObject=stream;
-
-if(/Mobi|Android/i.test(navigator.userAgent)){
-document.getElementById("flipBtn").style.display="block";
-}
-
 setTimeout(predict,1500);
 }
-
-document.getElementById("flipBtn").onclick=()=>{
-facing=facing==="environment"?"user":"environment";
-startScan();
-};
 
 /* AI */
 async function predict(){
 const p=await model.predict(video);
-let best=p[0];
-for(let i=1;i<p.length;i++){
-if(p[i].probability>best.probability) best=p[i];
-}
+let best=p.reduce((a,b)=>a.probability>b.probability?a:b);
 
 document.getElementById("result").innerHTML=
 best.className+" ("+(best.probability*100).toFixed(1)+"%)";
 
 document.getElementById("aiWarning").innerText=TEXTS[currentLang].warn;
 
+/* 🩹 SHOW FIRST AID */
+let steps=firstAidData[best.className.toLowerCase()]||["No data"];
+document.getElementById("firstAid").innerHTML=
+"<h3>First Aid</h3>"+steps.map(s=>"• "+s).join("<br>");
+
 speak(best.className);
 }
 
 /* VOICE */
 function startVoice(){
-try{
 let r=new webkitSpeechRecognition();
 r.start();
 r.onresult=e=>{
 let t=e.results[0][0].transcript.toLowerCase();
 document.getElementById("heard").innerText=t;
 if(t.includes("scan")) startScan();
-if(t.includes("help")||t.includes("ambulance")) dispatchRescue();
+if(t.includes("help")) dispatchRescue();
 };
-}catch{alert("Voice not supported");}
 }
 
-/* MAP */
+/* 📍 MAP FIXED (REAL LOCATION) */
 let map=L.map('map').setView([28.6,77.2],13);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
+let userMarker;
+
+navigator.geolocation.getCurrentPosition(pos=>{
+let lat=pos.coords.latitude;
+let lng=pos.coords.longitude;
+
+map.setView([lat,lng],15);
+userMarker=L.marker([lat,lng]).addTo(map);
+
+},()=>{
+userMarker=L.marker([28.6,77.2]).addTo(map);
+});
+
+/* 🚑 AMBULANCE FIX */
 let ambulanceMarker;
 
 function dispatchRescue(){
-let route=[[28.61,77.18],[28.6,77.2]];
+
+if(!userMarker)return;
+
+let user=userMarker.getLatLng();
+
+/* start far */
+let start=[user.lat+0.02,user.lng-0.02];
 
 if(ambulanceMarker) map.removeLayer(ambulanceMarker);
 
-ambulanceMarker=L.marker(route[0],{icon:L.divIcon({html:"🚑"})}).addTo(map);
+ambulanceMarker=L.marker(start,{icon:L.divIcon({html:"🚑"})}).addTo(map);
 
+/* smooth route */
+let steps=120;
+let route=[];
+for(let i=0;i<=steps;i++){
+route.push([
+start[0]+(user.lat-start[0])*(i/steps),
+start[1]+(user.lng-start[1])*(i/steps)
+]);
+}
+
+/* move */
 let i=0;
 let move=setInterval(()=>{
 ambulanceMarker.setLatLng(route[i]);
@@ -211,7 +243,7 @@ if(i>=route.length){
 clearInterval(move);
 speak(TEXTS[currentLang].arrived);
 }
-},800);
+},150);
 }
 
 /* JARVIS */
