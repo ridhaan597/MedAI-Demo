@@ -588,14 +588,26 @@ document.body.style.pointerEvents="auto";
 resetInactivity();
 }
 
-document.getElementById("yesHelp").onclick=()=>{
+/* wait till DOM fully loads */
+window.addEventListener("load", ()=>{
+
+const yesBtn=document.getElementById("yesHelp");
+const noBtn=document.getElementById("noHelp");
+
+if(yesBtn){
+yesBtn.onclick=()=>{
 closeInactivePopup();
 dispatchRescue();
 };
+}
 
-document.getElementById("noHelp").onclick=()=>{
+if(noBtn){
+noBtn.onclick=()=>{
 closeInactivePopup();
 };
+}
+
+});
 </script>
 <!-- 🚨 INACTIVITY MODAL -->
 <div id="inactiveModal" style="
