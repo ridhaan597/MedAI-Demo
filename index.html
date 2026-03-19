@@ -173,8 +173,48 @@ document.getElementById("aiWarning").innerText=TEXTS[currentLang].warn;
 
 /* 🩹 SHOW FIRST AID */
 let steps=firstAidData[best.className.toLowerCase()]||["No data"];
-document.getElementById("firstAid").innerHTML=
-"<h3>First Aid</h3>"+steps.map(s=>"• "+s).join("<br>");
+let container = document.getElementById("firstAid");
+container.innerHTML = "<h3>First Aid</h3>";
+
+steps.forEach(step=>{
+let card = document.createElement("div");
+card.className="aidCard";
+card.innerText=step;
+container.appendChild(card);
+});
+/* 🩹 FIRST AID CARDS */
+.aidCard{
+background:linear-gradient(145deg,#16a34a,#22c55e);
+padding:15px;
+margin:10px auto;
+max-width:260px;
+border-radius:12px;
+box-shadow:0 0 10px rgba(34,197,94,0.3);
+transition:0.3s;
+position:relative;
+overflow:hidden;
+}
+
+.aidCard:hover{
+transform:scale(1.05);
+box-shadow:0 0 20px rgba(34,197,94,0.8);
+}
+
+/* shine effect */
+.aidCard::after{
+content:"";
+position:absolute;
+top:0;
+left:-100%;
+width:100%;
+height:100%;
+background:linear-gradient(120deg,transparent,rgba(255,255,255,0.5),transparent);
+transition:0.5s;
+}
+
+.aidCard:hover::after{
+left:100%;
+}
 
 speak(best.className);
 }
@@ -208,44 +248,68 @@ userMarker=L.marker([lat,lng]).addTo(map);
 userMarker=L.marker([28.6,77.2]).addTo(map);
 });
 
-/* 🚑 AMBULANCE FIX */
 let ambulanceMarker;
 
-function dispatchRescue(){
+async function dispatchRescue(){
 
-if(!userMarker)return;
+if(!userMarker) return;
 
-let user=userMarker.getLatLng();
+let user = userMarker.getLatLng();
 
-/* start far */
-let start=[user.lat+0.02,user.lng-0.02];
+/* start farther away */
+let start=[user.lat+0.03,user.lng-0.03];
 
+/* remove old */
 if(ambulanceMarker) map.removeLayer(ambulanceMarker);
 
-ambulanceMarker=L.marker(start,{icon:L.divIcon({html:"🚑"})}).addTo(map);
+/* ambulance icon */
+ambulanceMarker = L.marker(start,{
+icon:L.divIcon({html:"🚑",className:"",iconSize:[30,30]})
+}).addTo(map);
 
-/* smooth route */
-let steps=120;
+speak("Ambulance is on the way");
+
+/* 🚨 get REAL ROAD ROUTE */
 let route=[];
+
+try{
+let res = await fetch(`https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${user.lng},${user.lat}?overview=full&geometries=geojson`);
+let data = await res.json();
+
+route = data.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]);
+}catch(e){
+console.log("Fallback route");
+
+/* fallback smooth curve */
+let steps=150;
 for(let i=0;i<=steps;i++){
 route.push([
 start[0]+(user.lat-start[0])*(i/steps),
 start[1]+(user.lng-start[1])*(i/steps)
 ]);
 }
+}
 
-/* move */
+/* 🚑 move smoothly */
 let i=0;
 let move=setInterval(()=>{
-ambulanceMarker.setLatLng(route[i]);
-i++;
-if(i>=route.length){
+
+if(i >= route.length){
 clearInterval(move);
+
+/* ✅ FIXED ARRIVAL */
+setTimeout(()=>{
 speak(TEXTS[currentLang].arrived);
-}
-},150);
+},500);
+
+return;
 }
 
+ambulanceMarker.setLatLng(route[i]);
+i++;
+
+},120);
+}
 /* JARVIS */
 function toggleJarvis(){
 document.getElementById("jarvis").classList.toggle("hidden");
