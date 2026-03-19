@@ -526,7 +526,119 @@ dispatchRescue = async function(){
         i++;
     },speed);
 };
-</script>
+/* ===================================== */
+/* 🚨 INACTIVITY TRACKER (ADD ONLY) */
+/* ===================================== */
 
+let inactivityTimer;
+let countdownInterval;
+let countdown = 60;
+
+function resetInactivity(){
+clearTimeout(inactivityTimer);
+
+inactivityTimer=setTimeout(()=>{
+showInactivePopup();
+},30000);
+}
+
+["click","touchstart","mousemove","keydown"].forEach(evt=>{
+document.addEventListener(evt,resetInactivity);
+});
+
+resetInactivity();
+
+function showInactivePopup(){
+
+const modal=document.getElementById("inactiveModal");
+modal.style.display="flex";
+
+countdown=60;
+updateTimer();
+
+/* disable interaction */
+document.body.style.pointerEvents="none";
+modal.style.pointerEvents="all";
+
+countdownInterval=setInterval(()=>{
+countdown--;
+updateTimer();
+
+if(countdown<=0){
+clearInterval(countdownInterval);
+closeInactivePopup();
+dispatchRescue();
+}
+},1000);
+}
+
+function updateTimer(){
+document.getElementById("inactiveTimer").innerText=
+"Auto dispatch in "+countdown+"s";
+}
+
+function closeInactivePopup(){
+const modal=document.getElementById("inactiveModal");
+modal.style.display="none";
+
+clearInterval(countdownInterval);
+
+document.body.style.pointerEvents="auto";
+
+resetInactivity();
+}
+
+document.getElementById("yesHelp").onclick=()=>{
+closeInactivePopup();
+dispatchRescue();
+};
+
+document.getElementById("noHelp").onclick=()=>{
+closeInactivePopup();
+};
+</script>
+<!-- 🚨 INACTIVITY MODAL -->
+<div id="inactiveModal" style="
+position:fixed;
+top:0;left:0;
+width:100%;height:100%;
+background:rgba(0,0,0,0.8);
+display:none;
+justify-content:center;
+align-items:center;
+z-index:99999;
+">
+
+<div style="
+background:#020617;
+padding:30px;
+border-radius:16px;
+text-align:center;
+max-width:300px;
+width:90%;
+box-shadow:0 0 20px rgba(34,197,94,0.5);
+">
+
+<h2>Need Help?</h2>
+<p id="inactiveTimer">Auto dispatch in 60s</p>
+
+<button id="yesHelp" style="
+background:#22c55e;
+color:black;
+margin:10px;
+padding:10px 20px;
+border-radius:20px;
+">Yes</button>
+
+<button id="noHelp" style="
+background:#ef4444;
+color:white;
+margin:10px;
+padding:10px 20px;
+border-radius:20px;
+">No</button>
+
+</div>
+</div>
 </body>
 </html>
