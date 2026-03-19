@@ -27,6 +27,20 @@ font-size:clamp(22px,5vw,32px);
 padding:25px;
 font-weight:bold;
 }
+<button id="langToggle" style="
+position:absolute;
+top:20px;
+right:20px;
+background:#22c55e;
+color:black;
+border:none;
+padding:8px 14px;
+border-radius:20px;
+cursor:pointer;
+z-index:10000;
+">
+🌐 हिंदी
+</button>
 
 .buttonContainer{
 display:flex;
@@ -608,6 +622,127 @@ closeInactivePopup();
 }
 
 });
+/* ===================================== */
+/* 🌐 MULTI-LANGUAGE SYSTEM (ADD ONLY) */
+/* ===================================== */
+
+let currentLang = "en";
+
+/* translations */
+const TEXTS = {
+en: {
+title: "MedAI Emergency Assistant",
+voice: "🎤 Start Voice Assistant",
+scan: "📷 Scan Injury",
+rescue: "🚑 Send Ambulance",
+aiMistake: "⚠️ AI can make mistakes",
+needHelp: "Need Help?",
+autoDispatch: "Auto dispatch in ",
+yes: "Yes",
+no: "No",
+arrived: "Ambulance has arrived"
+},
+
+hi: {
+title: "मेडएआई आपातकालीन सहायक",
+voice: "🎤 वॉइस शुरू करें",
+scan: "📷 चोट स्कैन करें",
+rescue: "🚑 एम्बुलेंस भेजें",
+aiMistake: "⚠️ AI गलती कर सकता है",
+needHelp: "मदद चाहिए?",
+autoDispatch: "स्वचालित एम्बुलेंस ",
+yes: "हाँ",
+no: "नहीं",
+arrived: "एम्बुलेंस पहुँच गई है"
+}
+};
+
+/* APPLY LANGUAGE */
+function applyLanguage(){
+
+/* header */
+document.querySelector("header").innerText = TEXTS[currentLang].title;
+
+/* buttons */
+document.querySelector(".voice").innerText = TEXTS[currentLang].voice;
+document.querySelector(".scan").innerText = TEXTS[currentLang].scan;
+document.querySelector(".rescue").innerText = TEXTS[currentLang].rescue;
+
+/* inactivity popup */
+const modalTitle = document.querySelector("#inactiveModal h2");
+if(modalTitle) modalTitle.innerText = TEXTS[currentLang].needHelp;
+
+const yesBtn = document.getElementById("yesHelp");
+const noBtn = document.getElementById("noHelp");
+
+if(yesBtn) yesBtn.innerText = TEXTS[currentLang].yes;
+if(noBtn) noBtn.innerText = TEXTS[currentLang].no;
+
+/* AI warning */
+const warn = document.getElementById("aiWarning");
+if(warn) warn.innerText = TEXTS[currentLang].aiMistake;
+
+}
+
+/* TOGGLE BUTTON */
+document.getElementById("langToggle").onclick = ()=>{
+currentLang = (currentLang === "en") ? "hi" : "en";
+
+/* change button label */
+document.getElementById("langToggle").innerText =
+currentLang === "en" ? "🌐 हिंदी" : "🌐 English";
+
+applyLanguage();
+};
+
+/* ===================================== */
+/* 🗣️ MAKE SPEECH MULTI-LANGUAGE */
+/* ===================================== */
+
+const originalSpeak = speak;
+
+speak = function(text){
+
+const speech = new SpeechSynthesisUtterance(text);
+
+/* language switch */
+speech.lang = (currentLang === "hi") ? "hi-IN" : "en-US";
+
+speechSynthesis.speak(speech);
+};
+
+/* ===================================== */
+/* 🚑 TRANSLATE AMBULANCE ARRIVAL */
+/* ===================================== */
+
+const originalDispatch2 = dispatchRescue;
+
+dispatchRescue = async function(){
+
+await originalDispatch2();
+
+/* override arrival speech */
+setTimeout(()=>{
+speak(TEXTS[currentLang].arrived);
+},500);
+
+};
+
+/* ===================================== */
+/* ⏱️ UPDATE TIMER TEXT LANGUAGE */
+/* ===================================== */
+
+const originalUpdateTimer = updateTimer;
+
+updateTimer = function(){
+
+document.getElementById("inactiveTimer").innerText =
+TEXTS[currentLang].autoDispatch + countdown + "s";
+
+};
+
+/* INIT */
+window.addEventListener("load", applyLanguage);
 </script>
 <!-- 🚨 INACTIVITY MODAL -->
 <div id="inactiveModal" style="
