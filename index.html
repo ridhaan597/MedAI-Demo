@@ -485,6 +485,7 @@ if(t.includes("ambulance")||t.includes("help"))dispatchRescue();
 
 /* MAP */
 let map,userMarker;
+let routeLine;
 
 function initMap(lat,lon){
 map=L.map('map').setView([lat,lon],15);
@@ -599,6 +600,10 @@ dispatchRescue = async function(){
 
     /* try real route */
     let route=[];
+    // Remove old route if exists
+    if(routeLine){
+        map.removeLayer(routeLine);
+    }
     try{
         let res=await fetch(`https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${user.lng},${user.lat}?overview=full&geometries=geojson`);
         let data=await res.json();
@@ -611,6 +616,15 @@ dispatchRescue = async function(){
     if(!route.length){
         route=slowFallbackRoute(start,user);
     }
+    // Draw route line
+    routeLine = L.polyline(route, {
+        color: '#3b82f6',
+        weight: 6,
+        opacity: 0.9
+    }).addTo(map);
+    
+    // Auto zoom like Google Maps
+    map.fitBounds(routeLine.getBounds(), { padding: [50,50] });
 
     /* smooth movement */
     let i=0;
