@@ -233,6 +233,95 @@ font-size:16px;
 color:#facc15;
 font-weight:bold;
 }
+/* PRICING SECTION */
+.pricingContainer{
+display:flex;
+flex-wrap:wrap;
+justify-content:center;
+gap:30px;
+margin-top:30px;
+padding-bottom:60px;
+}
+
+.planCard{
+background:#020617;
+border-radius:18px;
+padding:25px;
+width:90%;
+max-width:280px;
+text-align:center;
+transition:0.3s;
+border:2px solid transparent;
+position:relative;
+}
+
+/* Glow effect */
+.planCard::before{
+content:"";
+position:absolute;
+top:-2px;
+left:-2px;
+right:-2px;
+bottom:-2px;
+border-radius:18px;
+background:linear-gradient(45deg,#22c55e,#3b82f6,#22c55e);
+z-index:-1;
+filter:blur(12px);
+opacity:0.6;
+}
+
+/* Hover animation */
+.planCard:hover{
+transform:translateY(-8px) scale(1.03);
+}
+
+/* FREE PLAN STYLE */
+.freePlan{
+border-color:#22c55e;
+}
+
+/* PRO PLAN STYLE */
+.proPlan{
+border-color:#3b82f6;
+}
+
+/* PRICE TEXT */
+.price{
+font-size:22px;
+margin:10px 0;
+color:#facc15;
+font-weight:bold;
+}
+
+/* FEATURES LIST */
+.planCard ul{
+list-style:none;
+padding:0;
+margin:15px 0;
+text-align:left;
+}
+
+.planCard li{
+margin:8px 0;
+font-size:15px;
+}
+
+/* BUTTON */
+.planBtn{
+margin-top:15px;
+padding:10px 20px;
+border:none;
+border-radius:20px;
+cursor:pointer;
+font-weight:bold;
+background:#22c55e;
+color:black;
+transition:0.2s;
+}
+
+.planBtn:hover{
+background:#16a34a;
+}
 </style>
 </head>
 
@@ -786,6 +875,39 @@ border-radius:20px;
 ">No</button>
 
 </div>
+</div>
+<h2 style="margin-top:50px;">Plans</h2>
+
+<div class="pricingContainer">
+
+  <!-- FREE PLAN -->
+  <div class="planCard freePlan">
+    <h3>Free Plan</h3>
+    <p class="price">₹0/month</p>
+
+    <ul>
+      <li>✔ AI Injury Scan</li>
+      <li>✔ Emergency Dispatch</li>
+    </ul>
+
+    <button class="planBtn">Current Plan</button>
+  </div>
+
+  <!-- PRO PLAN -->
+  <div class="planCard proPlan">
+    <h3>Pro Plan</h3>
+    <p class="price">₹499/month</p>
+
+    <ul>
+      <li>✔ AI Injury Scan</li>
+      <li>✔ Emergency Dispatch</li>
+      <li>✔ Voice Assistant</li>
+      <li>✔ AI Chatbot (Jarvis)</li>
+    </ul>
+
+    <button class="planBtn">Upgrade</button>
+  </div>
+
 </div>
 </body>
 </html>
