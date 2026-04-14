@@ -366,6 +366,9 @@ background:#16a34a;
 <div id="jarvisHeader">MedAI Assistant</div>
 <div id="jarvisChat"></div>
 <div id="jarvisControls">
+<input id="jarvisInput" placeholder="Ask something..." 
+style="flex:2;padding:8px;border-radius:10px;border:none;">
+<button onclick="sendJarvis()">Send</button>
 <button onclick="jarvisScan()">Scan</button>
 <button onclick="jarvisHelp()">Help</button>
 </div>
@@ -929,6 +932,38 @@ TEXTS[currentLang].autoDispatch + countdown + "s";
 
 /* INIT */
 window.addEventListener("load", applyLanguage);
+
+async function sendJarvis(){
+
+const input = document.getElementById("jarvisInput");
+const text = input.value.trim();
+
+if(!text) return;
+
+addJarvisMessage(text,true);
+input.value="";
+
+try{
+    const res = await fetch("https://api-inference.huggingface.co/models/facebook/blenderbot-400M-distill",{
+        method:"POST",
+        headers:{
+            "Content-Type":"application/json"
+        },
+        body: JSON.stringify({inputs:text})
+    });
+
+    const data = await res.json();
+
+    let reply = "I am here to help.";
+    if(data.generated_text) reply = data.generated_text;
+
+    addJarvisMessage(reply);
+    speak(reply);
+
+}catch{
+    addJarvisMessage("⚠️ AI unavailable");
+}
+}
 </script>
 <!-- 🚨 INACTIVITY MODAL -->
 <div id="inactiveModal" style="
