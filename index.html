@@ -27,20 +27,6 @@ font-size:clamp(22px,5vw,32px);
 padding:25px;
 font-weight:bold;
 }
-<button id="langToggle" style="
-position:absolute;
-top:20px;
-right:20px;
-background:#22c55e;
-color:black;
-border:none;
-padding:8px 14px;
-border-radius:20px;
-cursor:pointer;
-z-index:10000;
-">
-🌐 हिंदी
-</button>
 
 .buttonContainer{
 display:flex;
@@ -322,10 +308,28 @@ transition:0.2s;
 .planBtn:hover{
 background:#16a34a;
 }
+.langBtn{
+position:fixed;
+top:15px;
+right:15px;
+background:#22c55e;
+color:black;
+border:none;
+padding:8px 14px;
+border-radius:20px;
+cursor:pointer;
+z-index:10000;
+font-weight:bold;
+}
+
+.langBtn:hover{
+background:#16a34a;
+}
 </style>
 </head>
 
 <body>
+<button id="langToggle" class="langBtn">🌐 हिंदी</button>
 
 <div id="topDisclaimer">
 ⚠️ MedAI is made by class 10 students. This is first aid guidance only, not medical diagnosis. Call emergency for serious injuries. Trust AI at your own risk.
@@ -380,12 +384,23 @@ speechSynthesis.speak(new SpeechSynthesisUtterance(text));
 
 /* FIRST AID */
 const firstAidInstructions={
+en:{
 bruise:["Apply cold compress immediately","Rest the area","Elevate if possible","Avoid pressure"],
 cut:["Clean with water","Apply antiseptic","Stop bleeding with pressure","Cover with bandage"],
 burn:["Cool under running water","Do not apply ice","Cover with cloth","Avoid popping blisters"],
 sprain:["Rest joint","Apply ice","Compress","Elevate limb"],
 fracture:["Immobilize area","Do not move","Apply splint","Seek medical help"],
 abrasion:["Clean wound","Apply ointment","Cover with bandage","Change dressing regularly"]
+},
+
+hi:{
+bruise:["तुरंत ठंडी पट्टी लगाएं","आराम करें","ऊपर उठाकर रखें","दबाव न डालें"],
+cut:["पानी से साफ करें","एंटीसेप्टिक लगाएं","खून रोकें","पट्टी बांधें"],
+burn:["ठंडे पानी से धोएं","बर्फ न लगाएं","कपड़े से ढकें","फफोले न फोड़ें"],
+sprain:["आराम करें","बर्फ लगाएं","दबाव दें","ऊपर उठाएं"],
+fracture:["हिलाएं नहीं","स्प्लिंट लगाएं","स्थिर रखें","डॉक्टर के पास जाएं"],
+abrasion:["घाव साफ करें","मरहम लगाएं","पट्टी करें","ड्रेसिंग बदलें"]
+}
 };
 
 /* MODEL */
@@ -446,7 +461,7 @@ document.getElementById("aiWarning").innerText="⚠️ AI can make mistakes";
 
 showFirstAid(best.className.toLowerCase());
 speak(best.className);
-addJarvisMessage("Detected: "+best.className);
+addJarvisMessage(TEXTS[currentLang].detected + best.className);
 }
 
 /* FIRST AID DISPLAY */
@@ -454,7 +469,7 @@ function showFirstAid(type){
 const div=document.getElementById("firstAid");
 div.innerHTML="";
 
-(firstAidInstructions[type]||["No data"]).forEach(step=>{
+(firstAidInstructions[currentLang][type] || ["No data"]).forEach(step=>{
 const card=document.createElement("div");
 card.className="firstAidCard";
 card.innerHTML="<b>"+type+"</b><br>"+step;
@@ -478,8 +493,13 @@ recognition.onresult=e=>{
 let t=e.results[e.results.length-1][0].transcript.toLowerCase();
 document.getElementById("heard").innerText="Heard: "+t;
 
-if(t.includes("scan"))startScan();
-if(t.includes("ambulance")||t.includes("help"))dispatchRescue();
+if(t.includes("scan") || t.includes("camera") || t.includes("स्कैन")){
+    startScan();
+}
+
+if(t.includes("ambulance") || t.includes("help") || t.includes("एम्बुलेंस") || t.includes("मदद")){
+    dispatchRescue();
+}
 };
 }
 
@@ -735,28 +755,38 @@ let currentLang = "en";
 const TEXTS = {
 en: {
 title: "MedAI Emergency Assistant",
-voice: "🎤 Start Voice Assistant",
-scan: "📷 Scan Injury",
-rescue: "🚑 Send Ambulance",
+tagline: "AI Injury Detection • Voice • Emergency Response",
+voice: "🎤 Voice",
+scan: "📷 Scan",
+rescue: "🚑 Ambulance",
+voiceOff: "Voice: Off",
+firstAid: "First Aid Instructions",
+map: "Emergency Map",
 aiMistake: "⚠️ AI can make mistakes",
 needHelp: "Need Help?",
 autoDispatch: "Auto dispatch in ",
 yes: "Yes",
 no: "No",
-arrived: "Ambulance has arrived"
+arrived: "Ambulance has arrived",
+detected: "Detected: "
 },
 
 hi: {
 title: "मेडएआई आपातकालीन सहायक",
-voice: "🎤 वॉइस शुरू करें",
-scan: "📷 चोट स्कैन करें",
-rescue: "🚑 एम्बुलेंस भेजें",
+tagline: "एआई चोट पहचान • वॉइस • आपातकालीन सहायता",
+voice: "🎤 वॉइस",
+scan: "📷 स्कैन",
+rescue: "🚑 एम्बुलेंस",
+voiceOff: "वॉइस: बंद",
+firstAid: "प्राथमिक उपचार निर्देश",
+map: "आपातकालीन नक्शा",
 aiMistake: "⚠️ AI गलती कर सकता है",
 needHelp: "मदद चाहिए?",
 autoDispatch: "स्वचालित एम्बुलेंस ",
 yes: "हाँ",
 no: "नहीं",
-arrived: "एम्बुलेंस पहुँच गई है"
+arrived: "एम्बुलेंस पहुँच गई है",
+detected: "पहचाना गया: "
 }
 };
 
@@ -766,10 +796,20 @@ function applyLanguage(){
 /* header */
 document.querySelector("header").innerText = TEXTS[currentLang].title;
 
+/* tagline */
+document.querySelector("p").innerText = TEXTS[currentLang].tagline;
+
 /* buttons */
 document.querySelector(".voice").innerText = TEXTS[currentLang].voice;
 document.querySelector(".scan").innerText = TEXTS[currentLang].scan;
 document.querySelector(".rescue").innerText = TEXTS[currentLang].rescue;
+
+/* voice text */
+document.getElementById("heard").innerText = TEXTS[currentLang].voiceOff;
+
+/* section titles */
+document.querySelectorAll("h2")[0].innerText = TEXTS[currentLang].firstAid;
+document.querySelectorAll("h2")[1].innerText = TEXTS[currentLang].map;
 
 /* inactivity popup */
 const modalTitle = document.querySelector("#inactiveModal h2");
@@ -788,15 +828,22 @@ if(warn) warn.innerText = TEXTS[currentLang].aiMistake;
 }
 
 /* TOGGLE BUTTON */
-document.getElementById("langToggle").onclick = ()=>{
-currentLang = (currentLang === "en") ? "hi" : "en";
+window.addEventListener("load", ()=>{
 
-/* change button label */
-document.getElementById("langToggle").innerText =
-currentLang === "en" ? "🌐 हिंदी" : "🌐 English";
+const langBtn = document.getElementById("langToggle");
 
-applyLanguage();
-};
+if(langBtn){
+    langBtn.onclick = ()=>{
+        currentLang = (currentLang === "en") ? "hi" : "en";
+
+        langBtn.innerText =
+        currentLang === "en" ? "🌐 हिंदी" : "🌐 English";
+
+        applyLanguage();
+    };
+}
+
+});
 
 /* ===================================== */
 /* 🗣️ MAKE SPEECH MULTI-LANGUAGE */
