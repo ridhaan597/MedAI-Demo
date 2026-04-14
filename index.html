@@ -541,11 +541,18 @@ out;
 `)
 .then(res=>res.json())
 .then(data=>{
-    data.elements.forEach(h=>{
-        L.marker([h.lat,h.lon])
-        .addTo(map)
-        .bindPopup("🏥 Nearby Hospital");
-    });
+    const hospitalIcon = L.divIcon({
+    html: "<div style='font-size:34px'>🏥</div>",
+    className: "",
+    iconSize: [40, 40],
+    iconAnchor: [20, 40]
+});
+
+data.elements.forEach(h=>{
+    L.marker([h.lat, h.lon], { icon: hospitalIcon })
+    .addTo(map)
+    .bindPopup("🏥 Nearby Hospital");
+});
 });
 
 setTimeout(()=>map.invalidateSize(),500);
