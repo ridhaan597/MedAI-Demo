@@ -933,85 +933,34 @@ TEXTS[currentLang].autoDispatch + countdown + "s";
 /* INIT */
 window.addEventListener("load", applyLanguage);
 
-function sendJarvis(){
+async function sendJarvis(){
 
 const input = document.getElementById("jarvisInput");
-const text = input.value.trim().toLowerCase();
+const text = input.value.trim();
 if(!text) return;
 
+/* show user message */
 addJarvisMessage(text,true);
 input.value="";
 
-let reply = generateSmartReply(text);
+try{
+    const res = await fetch("http://localhost:3000/chat",{
+        method:"POST",
+        headers:{
+            "Content-Type":"application/json"
+        },
+        body: JSON.stringify({ message: text })
+    });
 
-addJarvisMessage(reply);
-speak(reply);
+    const data = await res.json();
+
+    addJarvisMessage(data.reply);
+    speak(data.reply);
+
+}catch(err){
+    console.error(err);
+    addJarvisMessage("⚠️ AI server not responding");
 }
-
-function generateSmartReply(text){
-
-/* 🧠 GREETING */
-if(text.includes("hello") || text.includes("hi")){
-    return "Hello 👋 I am your MedAI assistant. How can I help you?";
-}
-
-/* 🚑 EMERGENCY */
-if(text.includes("help") || text.includes("emergency")){
-    return "If this is serious, press the ambulance button immediately. I can guide you meanwhile.";
-}
-
-/* 🩸 BLEEDING */
-if(text.includes("bleeding") || text.includes("blood")){
-    return "Apply firm pressure using a clean cloth. Keep the wound elevated. If bleeding doesn't stop, call emergency.";
-}
-
-/* 🔥 BURN */
-if(text.includes("burn")){
-    return "Cool the burn under running water for 10 minutes. Do not apply ice or toothpaste.";
-}
-
-/* 🦴 FRACTURE */
-if(text.includes("fracture") || text.includes("broken bone")){
-    return "Do not move the injured area. Immobilize it and seek medical help immediately.";
-}
-
-/* 🤕 PAIN */
-if(text.includes("pain")){
-    return "Rest the affected area. Avoid movement. If pain is severe or increasing, consult a doctor.";
-}
-
-/* 😷 FEVER */
-if(text.includes("fever")){
-    return "Stay hydrated and rest. If fever is high or lasts more than 2 days, consult a doctor.";
-}
-
-/* ❤️ CHEST PAIN */
-if(text.includes("chest pain")){
-    return "Chest pain can be serious. Call emergency immediately. Do not ignore it.";
-}
-
-/* 🧠 HEAD INJURY */
-if(text.includes("head") || text.includes("concussion")){
-    return "Avoid sleeping immediately after head injury. Monitor symptoms like dizziness or vomiting.";
-}
-
-/* 🤖 GENERAL QUESTIONS */
-if(text.includes("who are you")){
-    return "I am MedAI, your emergency assistant built to help in critical situations.";
-}
-
-/* 📷 SCAN HELP */
-if(text.includes("scan")){
-    return "Press the scan button and show the injury clearly to the camera.";
-}
-
-/* 🚑 AMBULANCE */
-if(text.includes("ambulance")){
-    return "Press the ambulance button. I will guide you while help is on the way.";
-}
-
-/* DEFAULT SMART RESPONSE */
-return "I understand. Based on your input, I recommend staying calm and seeking help if needed. Can you tell me more details?";
 }
 </script>
 <!-- 🚨 INACTIVITY MODAL -->
