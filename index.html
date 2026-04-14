@@ -937,29 +937,33 @@ async function sendJarvis(){
 
 const input = document.getElementById("jarvisInput");
 const text = input.value.trim();
+
 if(!text) return;
 
-/* show user message */
-addJarvisMessage(text,true);
-input.value="";
+addJarvisMessage(text, true);
+input.value = "";
 
 try{
-    const res = await fetch("http://localhost:3000/chat",{
-        method:"POST",
-        headers:{
-            "Content-Type":"application/json"
+    const res = await fetch("http://localhost:3000/chat", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
         },
         body: JSON.stringify({ message: text })
     });
 
     const data = await res.json();
 
-    addJarvisMessage(data.reply);
-    speak(data.reply);
+    if(data.reply){
+        addJarvisMessage(data.reply);
+        speak(data.reply);
+    } else {
+        addJarvisMessage("AI unavailable");
+    }
 
 }catch(err){
     console.error(err);
-    addJarvisMessage("⚠️ AI server not responding");
+    addJarvisMessage("AI unavailable");
 }
 }
 </script>
