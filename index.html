@@ -185,6 +185,22 @@ gap:10px;
 padding:10px;
 }
 
+.jarvisSend{
+flex:0.4;
+background:#0ea5e9;
+color:#020617;
+border-radius:12px;
+padding:5px 8px;
+font-size:12px;
+font-weight:bold;
+cursor:pointer;
+transition:0.2s;
+}
+
+.jarvisSend:hover{
+background:#0284c7;
+}
+
 #jarvisControls button{
 flex:1;
 background:#22c55e;
@@ -368,7 +384,7 @@ background:#16a34a;
 <div id="jarvisControls">
 <input id="jarvisInput" placeholder="Ask something..." 
 style="flex:2;padding:8px;border-radius:10px;border:none;">
-<button onclick="sendJarvis()">Send</button>
+<button class="jarvisSend" onclick="sendJarvis()">Send</button>
 <button onclick="jarvisScan()">Scan</button>
 <button onclick="jarvisHelp()">Help</button>
 </div>
